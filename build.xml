@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="DexLoader" default="CreateJar" basedir=".">
+	
+	<property file="user.properties"/>
+	
+<target name="CreateJar">
+	
+	<property name="destPath" value="${basedir}/gen" />
+	
+		<delete>
+		<fileset dir="${destPath}" includes="**/*" />
+		</delete>
+		
+<ant antfile="${sdk_iface}" dir="${basedir}" />
+<ant antfile="${sdk_update}" dir ="${basedir}" />
+<ant antfile="${sdk_core}" dir ="${basedir}" />
+<ant antfile="${sdk_main}" dir ="${basedir}" />
+
+</target>
+</project>

@@ -1,0 +1,5 @@
+package cn.uc.gamesdk.util;
+
+public class GlobalVars {
+
+}

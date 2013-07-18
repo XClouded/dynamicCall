@@ -1,0 +1,51 @@
+package cn.uc.gamesdk.demo;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.Button;
+import cn.uc.gamesdk.DexLoader;
+import cn.uc.gamesdk.R;
+import cn.uc.gamesdk.iconst.CApi;
+import cn.uc.gamesdk.iface.IDispatcher;
+import cn.uc.gamesdk.tools.GlobalVars;
+import cn.uc.gamesdk.tools.ReleaseJar;
+
+public class DemoActivity extends Activity implements OnClickListener {
+
+	private Button btnRelease = null;
+	private Button btnInit = null;
+	private Button btnLogin = null;
+
+	protected void onCreate(Bundle bundle) {
+		super.onCreate(bundle);
+		setContentView(R.layout.activity_dex_loader);
+
+		GlobalVars.context = this;
+
+		btnRelease = (Button) findViewById(R.id.btn_release);
+		btnInit = (Button) findViewById(R.id.btn_init);
+		btnLogin = (Button) findViewById(R.id.btn_login);
+		btnRelease.setOnClickListener(this);
+		btnInit.setOnClickListener(this);
+		btnLogin.setOnClickListener(this);
+	}
+
+	@Override
+	public void onClick(View view) {
+		if (view == btnRelease) {
+			ReleaseJar.releaseJar();
+		} else if (view == btnInit) {
+
+		} else if (view == btnLogin) {
+			IDispatcher classDispatcher = DexLoader.getInstance().Creator(
+					CApi.API_LOGIN);
+			if (null != classDispatcher)
+				classDispatcher.loadMethodFromClass(CApi.API_LOGIN,
+						new Object[] { String.valueOf(System
+								.currentTimeMillis()) });
+		}
+	}
+
+}

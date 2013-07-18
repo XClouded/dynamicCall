@@ -1,0 +1,7 @@
+package cn.uc.gamesdk.util;
+
+import android.content.Context;
+
+public class GlobalVars {
+	public static Context context;
+}

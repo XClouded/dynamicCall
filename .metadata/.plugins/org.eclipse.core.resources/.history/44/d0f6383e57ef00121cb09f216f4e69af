@@ -1,0 +1,22 @@
+package cn.uc.gamesdk.core;
+
+import cn.uc.gamesdk.api.apiLogin;
+
+public class Dispatch {
+	private static final String API_LOGIN = "login";
+	private static final String API_INIT = "init";
+
+	public static boolean loadClass(String clazz) {
+
+		return false;
+	}
+
+	public static boolean loadMethodFromClass(String business, String method,
+			Object... params) {
+		if (API_LOGIN.equals(business)) {
+			apiLogin.setLoingMessage(params[0].toString());
+		}
+
+		return true;
+	}
+}

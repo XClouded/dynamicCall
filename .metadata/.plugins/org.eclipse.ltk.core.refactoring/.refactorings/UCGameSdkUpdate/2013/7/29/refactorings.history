@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename type &apos;cn.uc.gamesdk.update.Dispatch&apos; to &apos;Dispatcher&apos;&#x0D;&#x0A;- Original project: &apos;UCGameSdkUpdate&apos;&#x0D;&#x0A;- Original element: &apos;cn.uc.gamesdk.update.Dispatch&apos;&#x0D;&#x0A;- Renamed element: &apos;cn.uc.gamesdk.update.Dispatcher&apos;&#x0D;&#x0A;- Update references to refactored element&#x0D;&#x0A;- Update textual occurrences in comments and strings" description="Rename type &apos;Dispatch&apos;" flags="589830" id="org.eclipse.jdt.ui.rename.type" input="/src&lt;cn.uc.gamesdk.update{Dispatch.java[Dispatch" matchStrategy="1" name="Dispatcher" qualified="false" references="true" similarDeclarations="false" stamp="1374116882707" textual="false" version="1.0"/>
+</session>

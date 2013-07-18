@@ -1,0 +1,97 @@
+package cn.uc.gamesdk;
+
+import java.io.File;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
+
+import android.annotation.SuppressLint;
+import cn.uc.gamesdk.entity.DexClassPath;
+import cn.uc.gamesdk.iface.IDexClassLoader;
+import cn.uc.gamesdk.iface.IDispatcher;
+import cn.uc.gamesdk.tools.FileUtil;
+import cn.uc.gamesdk.tools.GlobalVars;
+import dalvik.system.DexClassLoader;
+
+public class DexLoader implements IDexClassLoader {
+	public static final String API_LOGIN = "login";
+	public static final String API_INIT = "init";
+	public static final String API_UPDATE = "update";
+
+	private static Map<String, DexClassPath> dexPathMap = null;
+	private static Map<String, IDispatcher> dexLoaderMap = null;
+
+	private static DexLoader dexLoader = null;// 保存加载dex的对象
+
+	public static DexLoader getInstance() {
+		if (null == dexLoader)
+			dexLoader = new DexLoader();
+
+		return dexLoader;
+
+	}
+
+	@SuppressLint("NewApi")
+	public IDispatcher Creator(String apiName) {
+		if (null == dexPathMap)
+			init();
+		IDispatcher classDispatcher = null;
+		
+		if (dexPathMap.containsKey(apiName)) {
+			DexClassPath dexClass = dexPathMap.get(apiName);
+			String className = dexClass.classPath;
+			String dexName = dexClass.dexPath;
+
+			if (dexLoaderMap.containsKey(dexName)) {
+				classDispatcher = dexLoaderMap.get(dexName);
+			} else {
+				DexClassLoader classLoader = new DexClassLoader(
+						FileUtil.getFilePath() + File.separator + dexName,
+						FileUtil.getCachePath(), null,
+						GlobalVars.context.getClassLoader());
+
+				try {
+					Class libProviderClass = classLoader.loadClass(className);
+					Method getInstanceMethod = libProviderClass
+							.getDeclaredMethod("getInstance", null);
+
+					classDispatcher = (IDispatcher) getInstanceMethod.invoke(
+							null, null);
+					
+					classDispatcher.setClassLoader(this);// !必须设置
+					
+					dexLoaderMap.put(dexName, classDispatcher);
+				} catch (ClassNotFoundException e) {
+					e.printStackTrace();
+				} catch (IllegalAccessException e) {
+					e.printStackTrace();
+				} catch (NoSuchMethodException e) {
+					e.printStackTrace();
+				} catch (IllegalArgumentException e) {
+					e.printStackTrace();
+				} catch (InvocationTargetException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return classDispatcher;
+	}
+
+	private void init() {
+		dexPathMap = new HashMap<String, DexClassPath>();
+		dexLoaderMap = new HashMap<String, IDispatcher>();
+
+		DexClassPath core = new DexClassPath();
+		core.classPath = "cn.uc.gamesdk.core.Dispatcher";
+		core.dexPath = "jars/core.jar";
+
+		DexClassPath update = new DexClassPath();
+		update.classPath = "cn.uc.gamesdk.update.Dispatcher";
+		update.dexPath = "jars/update.jar";
+
+		dexPathMap.put(API_LOGIN, core);
+		dexPathMap.put(API_INIT, core);
+		dexPathMap.put(API_UPDATE, update);
+	}
+}

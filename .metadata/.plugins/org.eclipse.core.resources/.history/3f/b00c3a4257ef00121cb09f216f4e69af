@@ -1,0 +1,18 @@
+package cn.uc.gamesdk.update;
+
+public class Dispatch {
+	private static final String CLASS_UPDATE_H5 = "h5";
+	private static final String CLASS_UPDATE_CORE = "core";
+
+	public static boolean loadClass(String clazz) {
+
+		
+		return false;
+	}
+	
+	public static boolean loadMethodFromClass(String clazz,String method)
+	{
+		
+		return true;
+	}
+}

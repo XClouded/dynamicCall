@@ -1,0 +1,44 @@
+package cn.uc.gamesdk;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import cn.uc.gamesdk.entity.DexClassPath;
+import cn.uc.gamesdk.iface.IDexClassLoader;
+
+public class DexClassLoader implements IDexClassLoader{
+	public static final String API_LOGIN = "login";
+	public static final String API_INIT = "init";
+	public static final String API_UPDATE = "update";
+
+	private static Map<String, DexClassPath> dexPathMap = null;
+
+	public void Creator(String apiName) {
+		if (null == dexPathMap)
+			init();
+
+		if(dexPathMap.containsKey(apiName))
+		{
+			DexClassPath dexClass=dexPathMap.get(apiName);
+			
+		}
+	}
+
+	private void init() {
+		dexPathMap = new HashMap<String, DexClassPath>();
+
+		DexClassPath core = new DexClassPath();
+		core.classPath = "cn.uc.gamesdk.core.Dispatch";
+		core.dexPath = "core";
+
+		DexClassPath update = new DexClassPath();
+		update.classPath = "cn.uc.gamesdk.update.Dispatch";
+		core.dexPath = "update";
+
+		dexPathMap.put(API_LOGIN, core);
+		dexPathMap.put(API_INIT, core);
+		dexPathMap.put(API_UPDATE, update);
+	}
+	
+	
+}

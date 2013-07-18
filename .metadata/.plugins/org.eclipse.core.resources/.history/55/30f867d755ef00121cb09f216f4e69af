@@ -1,0 +1,22 @@
+package cn.uc.gamesdk.demo;
+
+import android.app.Activity;
+import android.os.Bundle;
+import cn.uc.gamesdk.DexLoader;
+import cn.uc.gamesdk.R;
+import cn.uc.gamesdk.tools.GlobalVars;
+import cn.uc.gamesdk.tools.ReleaseJar;
+
+public class DemoActivity extends Activity {
+	protected void onCreate(Bundle bundle) {
+		super.onCreate(bundle);
+		setContentView(R.layout.activity_dex_loader);
+
+		GlobalVars.context = this;
+
+		ReleaseJar.releaseJar();
+		DexLoader.getInstance().Creator(DexLoader.API_LOGIN);
+		DexLoader.getInstance().Creator(DexLoader.API_LOGIN);
+	}
+
+}

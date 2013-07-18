@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="DexLoader" default="CopyJar" basedir=".">
+	
+<target name="CopyJar">
+	<property name="projectPath" value="${basedir}/UCGameSdk"/>
+	<property name="assetPath" value="${projectPath}/assets/jars" />
+	<property name="srcPath" value="${basedir}/gen/dex"/>
+	
+	<delete dir="${assetPath}"/>
+	<mkdir dir="${assetPath}" />
+	
+	<copy overwrite="true" todir="${assetPath}" >
+		<fileset dir="${srcPath}" includes="*.jar"/>
+		</copy>
+	
+	
+</target>
+</project>

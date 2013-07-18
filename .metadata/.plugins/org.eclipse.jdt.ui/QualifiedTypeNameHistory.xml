@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<qualifiedTypeNameHistroy>
+<fullyQualifiedTypeName name="android.R"/>
+<fullyQualifiedTypeName name="android.R.layout"/>
+<fullyQualifiedTypeName name="cn.uc.gamesdk.R"/>
+<fullyQualifiedTypeName name="cn.uc.gamesdk.R.style"/>
+<fullyQualifiedTypeName name="java.util.HashMap"/>
+<fullyQualifiedTypeName name="cn.uc.gamesdk.entity.DexClassPath"/>
+<fullyQualifiedTypeName name="cn.uc.gamesdk.iface.IDexClassLoader"/>
+<fullyQualifiedTypeName name="org.json.JSONStringer"/>
+<fullyQualifiedTypeName name="org.json.JSONObject"/>
+<fullyQualifiedTypeName name="cn.uc.gamesdk.util.ReleaseJar"/>
+<fullyQualifiedTypeName name="cn.uc.gamesdk.DexClassLoader"/>
+<fullyQualifiedTypeName name="java.io.File"/>
+<fullyQualifiedTypeName name="dalvik.system.DexClassLoader"/>
+<fullyQualifiedTypeName name="android.util.Log"/>
+<fullyQualifiedTypeName name="org.json.JSONArray"/>
+<fullyQualifiedTypeName name="android.content.res.AssetManager"/>
+<fullyQualifiedTypeName name="cn.uc.gamesdk.tools.FileUtil"/>
+<fullyQualifiedTypeName name="cn.uc.gamesdk.tools.GlobalVars"/>
+<fullyQualifiedTypeName name="cn.uc.gamesdk.DexLoader"/>
+</qualifiedTypeNameHistroy>

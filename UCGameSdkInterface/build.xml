@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="DexLoader" default="CreateJar" basedir=".">
+
+<target name="CreateJar">
+			<property name="sdk-folder" value="D:/adt-bundle-windows-x86_64/eclipse/sdk" />
+		<property name="sdk-platform-folder" value="${sdk-folder}/platforms/android-17" />
+		<path id="android">
+			<pathelement path="${sdk-platform-folder}/android.jar" />
+		</path>
+
+		
+	<property name="projectPath" value="${basedir}/UCGameSdkInterface"/>
+		<property name="buildPath" value="${projectPath}/build" />
+	<property name="classPath" value="${projectPath}/src" />
+	<property name="destPath" value="${basedir}/gen" />
+<property name="destName" value="iface" />
+
+		<mkdir dir="${buildPath}" />
+		
+	<delete>
+		<fileset dir="${buildPath}" includes="**/*" />
+		</delete>
+		
+	
+		<javac debug="true" destdir="${buildPath}" encoding="UTF-8" includeantruntime="on" source="1.6" srcdir="${classPath}" target="1.6">
+			<classpath refid="android" />
+			</javac>
+			
+			<jar basedir="${buildPath}" includes="**/*.class" jarfile="${destPath}/${destName}.jar"/>
+			
+			
+</target>
+</project>

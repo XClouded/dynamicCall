@@ -1,0 +1,7 @@
+package cn.uc.gamesdk.iface;
+
+public interface IDispatch {
+	public boolean loadClass(String clazz);
+
+	public boolean loadMethodFromClass(String apiName, Object... params);
+}

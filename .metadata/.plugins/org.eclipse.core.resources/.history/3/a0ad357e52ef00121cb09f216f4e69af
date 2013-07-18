@@ -1,0 +1,74 @@
+package cn.uc.gamesdk.tools;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+
+import android.content.res.AssetManager;
+
+public class ReleaseJar {
+
+	private static final String CLASS_NAME = "ReleaseJar";
+
+	private static final String JAR_LIST = "jars/jar_list.json";// assets中的jar包说明文件路径
+
+	private static final String DEST_PATH = "jars";
+
+	public static JSONArray getJarsList() {
+		String str = "['jars/core.jar', 'jars/update.jar']";
+		JSONArray jarListArray = null;
+		try {
+			jarListArray = new JSONArray(str);
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+
+		return jarListArray;
+	}
+
+	public static boolean releaseJar() {
+
+		File dest = new File(FileUtil.getFilePath() + File.separator
+				+ DEST_PATH);
+		if (!dest.exists())
+			dest.mkdirs();
+
+		JSONArray jarList = getJarsList();
+		if (null != jarList) {
+			for (int i = 0; i < jarList.length(); i++) {
+				AssetManager assetManager = FileUtil.getAssetManager();
+				int size;
+				byte[] buffer = new byte[1024];
+				try {
+
+					String jarPath = jarList.getJSONObject(i).toString();
+					InputStream input = assetManager.open(jarPath);
+
+					File outputFile = new File(FileUtil.getFilePath()
+							+ File.separator + jarPath);
+					outputFile.createNewFile();
+					FileOutputStream output = new FileOutputStream(outputFile);
+
+					while ((size = input.read(buffer)) > 0) {
+						output.write(buffer, 0, size);
+					}
+					input.close();
+					output.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+					return false;
+				} catch (RuntimeException ex) {
+					ex.printStackTrace();
+					return false;
+				} catch (JSONException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return true;
+	}
+}

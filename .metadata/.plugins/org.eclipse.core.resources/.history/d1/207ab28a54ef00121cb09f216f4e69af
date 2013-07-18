@@ -1,0 +1,11 @@
+package cn.uc.gamesdk.core;
+
+public class Dispatch {
+	private static final String CLASS_LOGIN = "login";
+	private static final String CLASS_INIT = "init";
+
+	public static boolean loadClass(String clazz) {
+
+		return false;
+	}
+}

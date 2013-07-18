@@ -1,0 +1,15 @@
+package cn.uc.gamesdk.tools;
+
+import android.content.Context;
+
+public class FileUtil {
+	public static String getCachePath() {
+		final Context ctx = GlobalVars.context;
+		return ctx.getCacheDir().getAbsolutePath();
+	}
+
+	public static String getFilePath() {
+		final Context ctx = GlobalVars.context;
+		return ctx.getFilesDir().getAbsolutePath();
+	}
+}

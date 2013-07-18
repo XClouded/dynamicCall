@@ -1,0 +1,43 @@
+package cn.uc.gamesdk.core;
+
+import cn.uc.gamesdk.api.apiLogin;
+import cn.uc.gamesdk.iface.IDexClassLoader;
+import cn.uc.gamesdk.iface.IDispatcher;
+
+public class Dispatcher implements IDispatcher {
+	private static final String CLASS_NAME = "DISPATCHER FROM CORE";
+
+	private static final String API_LOGIN = "login";
+	private static final String API_INIT = "init";
+
+	private static Dispatcher _dispatcher = null;
+	private static IDexClassLoader _classLoader = null;
+
+	public static Dispatcher getInstance() {
+		if (null == _dispatcher)
+			_dispatcher = new Dispatcher();
+
+		return _dispatcher;
+	}
+
+	@Override
+	public boolean loadClass(String clazz) {
+		return false;
+	}
+
+	@Override
+	public boolean loadMethodFromClass(String apiName, Object... params) {
+		if (API_LOGIN.equals(apiName)) {
+			apiLogin.setLoingMessage(params[0].toString());
+			IDispatcher classDispatcher = _classLoader.Creator("h5");
+			classDispatcher.loadMethodFromClass("h5", null);
+		}
+
+		return true;
+	}
+
+	@Override
+	public void setClassLoader(IDexClassLoader classLoader) {
+		_classLoader = classLoader;
+	}
+}

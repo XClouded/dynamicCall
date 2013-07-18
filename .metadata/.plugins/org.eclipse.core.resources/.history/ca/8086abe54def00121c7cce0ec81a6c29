@@ -1,0 +1,66 @@
+package cn.uc.gamesdk;
+
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+
+import cn.uc.gamesdk.entity.DexClassPath;
+import cn.uc.gamesdk.iface.IDexClassLoader;
+import cn.uc.gamesdk.tools.FileUtil;
+import cn.uc.gamesdk.tools.GlobalVars;
+
+public class DexLoader implements IDexClassLoader {
+	public static final String API_LOGIN = "login";
+	public static final String API_INIT = "init";
+	public static final String API_UPDATE = "update";
+
+	private static Map<String, DexClassPath> dexPathMap = null;
+	private static Map<String, DexLoader> dexLoaderMap = null;
+
+	private static DexLoader dexClassLoader = null;// 保存加载dex的对象
+
+	public static DexLoader getInstance() {
+		if (null == dexClassLoader)
+			dexClassLoader = new DexLoader();
+
+		return dexClassLoader;
+
+	}
+
+	public void Creator(String apiName) {
+		if (null == dexPathMap)
+			init();
+
+		if (dexPathMap.containsKey(apiName)) {
+			DexClassPath dexClass = dexPathMap.get(apiName);
+			String className = dexClass.classPath;
+			String dexName = dexClass.dexPath;
+
+			DexLoader classLoader;
+			if (dexLoaderMap.containsKey(dexName)) {
+				classLoader = dexLoaderMap.get(dexName);
+			} else {
+				classLoader = new DexLoader(FileUtil.getFilePath()
+						+ File.separator + dexName, FileUtil.getCachePath(),
+						null, GlobalVars.context.getClassLoader());
+			}
+		}
+	}
+
+	private void init() {
+		dexPathMap = new HashMap<String, DexClassPath>();
+		dexLoaderMap = new HashMap<String, DexLoader>();
+
+		DexClassPath core = new DexClassPath();
+		core.classPath = "cn.uc.gamesdk.core.Dispatch";
+		core.dexPath = "core";
+
+		DexClassPath update = new DexClassPath();
+		update.classPath = "cn.uc.gamesdk.update.Dispatch";
+		core.dexPath = "update";
+
+		dexPathMap.put(API_LOGIN, core);
+		dexPathMap.put(API_INIT, core);
+		dexPathMap.put(API_UPDATE, update);
+	}
+}

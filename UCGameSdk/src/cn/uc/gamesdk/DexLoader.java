@@ -35,7 +35,7 @@ public class DexLoader implements IDexClassLoader {
 		if (null == dexPathMap)
 			init();
 		IDispatcher classDispatcher = null;
-		
+
 		if (dexPathMap.containsKey(apiName)) {
 			DexClassPath dexClass = dexPathMap.get(apiName);
 			String className = dexClass.classPath;
@@ -56,9 +56,9 @@ public class DexLoader implements IDexClassLoader {
 
 					classDispatcher = (IDispatcher) getInstanceMethod.invoke(
 							null, null);
-					
+
 					classDispatcher.setClassLoader(this);// !必须设置,DEX间通信用
-					
+
 					dexLoaderMap.put(dexName, classDispatcher);
 				} catch (ClassNotFoundException e) {
 					e.printStackTrace();
@@ -93,6 +93,13 @@ public class DexLoader implements IDexClassLoader {
 
 		dexPathMap.put(CApi.API_LOGIN, core);
 		dexPathMap.put(CApi.API_INIT, core);
+		dexPathMap.put(CApi.API_WEBVIEW, core);
 		dexPathMap.put(CApi.API_UPDATE, update);
+	}
+
+	public void releaseControl() {
+		dexPathMap = null;
+		dexLoaderMap = null;
+		System.gc();
 	}
 }

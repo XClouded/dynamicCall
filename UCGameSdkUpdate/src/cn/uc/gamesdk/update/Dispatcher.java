@@ -1,6 +1,7 @@
 package cn.uc.gamesdk.update;
 
 import android.util.Log;
+import cn.uc.gamesdk.iface.IActivityControl;
 import cn.uc.gamesdk.iface.IDexClassLoader;
 import cn.uc.gamesdk.iface.IDispatcher;
 import cn.uc.gamesdk.ilistener.UCCallbackListener;
@@ -36,6 +37,12 @@ public class Dispatcher implements IDispatcher {
 		Log.d(CLASS_NAME,apiName);
 		listener.callback(0, "I am from update dispatcher");
 		return false;
+	}
+
+	@Override
+	public void invokeActivity(IActivityControl activity) {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

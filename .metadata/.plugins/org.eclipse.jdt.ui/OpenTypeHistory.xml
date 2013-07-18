@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <typeInfoHistroy>
 <typeInfo handle="=UCGameSdk/D:\/adt-bundle-windows-x86_64\/eclipse\/sdk\/platforms\/android-17\/android.jar&lt;android.app(Activity.class[Activity" modifiers="33" timestamp="1369625413572"/>
-<typeInfo handle="=UCGameSdk/src&lt;cn.uc.gamesdk.demo{DemoActivity.java[DemoActivity" modifiers="1" timestamp="1374114432872"/>
+<typeInfo handle="=UCGameSdk/src&lt;cn.uc.gamesdk.demo{DemoActivity.java[DemoActivity" modifiers="1" timestamp="1374130629231"/>
+<typeInfo handle="=UCGameSdk/src&lt;cn.uc.gamesdk{ContainerActivity.java[ContainerActivity" modifiers="1" timestamp="1374131468853"/>
 </typeInfoHistroy>

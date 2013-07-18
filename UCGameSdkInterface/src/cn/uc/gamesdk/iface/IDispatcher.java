@@ -9,4 +9,6 @@ public interface IDispatcher {
 			UCCallbackListener<String> listener, Object... params);
 
 	public void setClassLoader(IDexClassLoader classLoader);
+	
+	public void invokeActivity(IActivityControl activity);
 }

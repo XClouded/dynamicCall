@@ -1,10 +1,13 @@
 package cn.uc.gamesdk.core;
 
+import android.app.Activity;
 import cn.uc.gamesdk.api.apiLogin;
 import cn.uc.gamesdk.iconst.CApi;
+import cn.uc.gamesdk.iface.IActivityControl;
 import cn.uc.gamesdk.iface.IDexClassLoader;
 import cn.uc.gamesdk.iface.IDispatcher;
 import cn.uc.gamesdk.ilistener.UCCallbackListener;
+import cn.uc.gamesdk.layout.ActivityLayout;
 
 public class Dispatcher implements IDispatcher {
 	private static final String CLASS_NAME = "DISPATCHER FROM CORE";
@@ -42,5 +45,12 @@ public class Dispatcher implements IDispatcher {
 	@Override
 	public void setClassLoader(IDexClassLoader classLoader) {
 		_classLoader = classLoader;
+	}
+
+	@Override
+	public void invokeActivity(IActivityControl activity) {
+		Activity mainActivity=(Activity)activity;
+		ActivityLayout layout=new ActivityLayout(mainActivity);
+		mainActivity.setContentView(layout);
 	}
 }

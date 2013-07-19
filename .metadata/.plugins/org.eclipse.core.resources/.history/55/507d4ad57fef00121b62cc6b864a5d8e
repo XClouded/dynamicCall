@@ -1,0 +1,240 @@
+/*
+       Licensed to the Apache Software Foundation (ASF) under one
+       or more contributor license agreements.  See the NOTICE file
+       distributed with this work for additional information
+       regarding copyright ownership.  The ASF licenses this file
+       to you under the Apache License, Version 2.0 (the
+       "License"); you may not use this file except in compliance
+       with the License.  You may obtain a copy of the License at
+
+         http://www.apache.org/licenses/LICENSE-2.0
+
+       Unless required by applicable law or agreed to in writing,
+       software distributed under the License is distributed on an
+       "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+       KIND, either express or implied.  See the License for the
+       specific language governing permissions and limitations
+       under the License.
+ */
+
+package cn.uc.gamesdk.bridge.service;
+
+import java.util.HashMap;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import cn.uc.gamesdk.bridge.WebBridge;
+import cn.uc.gamesdk.bridge.api.BridgeInterface;
+import cn.uc.gamesdk.bridge.api.Service;
+import cn.uc.gamesdk.bridge.api.ServiceResult;
+import cn.uc.gamesdk.common.ICallback;
+import cn.uc.gamesdk.log.UCLog;
+import cn.uc.gamesdk.service.ServiceResultConverter;
+
+/**
+ * This class exposes methods in WebBridge that can be called from JavaScript.
+ */
+public class App extends Service {
+    private static final String CLASS_NAME = "app";
+
+    /**
+     * Executes the request and returns ServiceResult.
+     * 
+     * @param action
+     *            The action to execute.
+     * @param args
+     *            JSONArry of arguments for the plugin.
+     * @param callbackId
+     *            The callback id used when calling back into JavaScript.
+     * @return A ServiceResult object with a status and message.
+     */
+    public ServiceResult execute(String action, JSONObject args, String callbackId) {
+        ServiceResult.Status status = ServiceResult.Status.OK;
+        String result = "";
+        try {
+            if (action.equals("loadUrl")) {
+                this.loadUrl(args.getString("url"), args.optJSONObject("props"));
+            } else if (action.equals("urlHashChange")) {
+                this.urlHashChange();
+            } else if (action.equals("clearHistory")) {
+                this.clearHistory();
+            } else if (action.equals("backHistory")) {
+                this.backHistory();
+            } else if (action.equals("exitApp")) {
+                this.exitApp();
+            } else if (action.equals("overrideBackbutton")) {
+                this.overrideBackbutton(args);
+            } else if (action.equals("keyboard")) {
+                return this.keyboard(args, callbackId);
+            }
+            return new ServiceResult(status, result);
+        } catch (JSONException e) {
+            return new ServiceResult(ServiceResult.Status.JSON_EXCEPTION);
+        }
+    }
+
+    @Override
+    public boolean isSynch(String action) {
+        if ("keyboard".equals(action)) {
+            return false;
+        }
+        return super.isSynch(action);
+    }
+
+
+    //--------------------------------------------------------------------------
+    // LOCAL METHODS
+    //--------------------------------------------------------------------------
+    /**
+     * Override the default behavior of the Android back button.
+     * If overridden, when the back button is pressed, the "backKeyDown" JavaScript event will be fired.
+     * @param paramObj {
+     *    override : false // true = override; false = not override 
+     * }
+     */
+    public void overrideBackbutton(JSONObject paramObj) {
+        boolean override = paramObj.optBoolean("override");
+        UCLog.debug("App", "overrideBackbutton", "WARNING: Back Button Default Behaviour will be overridden.  The backbutton event will be fired!");
+        this.ctx.bindBackButton(override);
+    }
+
+    /**
+     * 1 应用场景：
+     * 在应用横屏情况下，弹出一个全屏键盘提供给用户输入。
+     * 在应用竖屏的情况下，不应该调用该接口！！
+     * 
+     * 2 说明
+     * 支持密码和非密码输入，具体看参数说明。
+     * 
+     * @param args  example: {
+     *            type : "password", // "password"表明采用键盘采用密文输入， 其它采用明文输入
+     *            text : "123456"
+     *            }
+     */
+    private ServiceResult keyboard(JSONObject paramObj, final String callbackId) {
+        final boolean isPassword = "password".equals(paramObj.optString("type"));
+        final String text = paramObj.optString("text", "");
+        final String hint = paramObj.optString("hint", "");
+        final WebBridge bridge = ((WebBridge) this.ctx);
+        bridge.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                bridge.showKeyboard(isPassword, text, hint, new ICallback<String>() {
+                    @Override
+                    public void callback(String value) {
+                        UCLog.debug(CLASS_NAME, "keyboard", "receive value = " + value);
+                        JSONObject result = new JSONObject();
+                        try {
+                            result.put("result", value);
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                        ctx.sendJavascript(ServiceResultConverter.toWrapSuccessResult(result).toSuccessCallbackString(callbackId));
+                    }
+                });
+
+            }
+        });
+        ServiceResult result = ServiceResultConverter.toWrapSuccessResult(null);
+        result.setKeepCallback(true);
+        return result;
+    }
+
+    /**
+     * Load the url into the webview.
+     * 
+     * @param url
+     * @param props
+     *            Properties that can be passed in to the WebBridge activity (i.e. loadingDialog, wait, ...)
+     * @throws JSONException
+     */
+    public void loadUrl(String url, JSONObject props) throws JSONException {
+        UCLog.debug("App", "loadUrl", "App.loadUrl(" + url + "," + props + ")");
+        int wait = 0;
+        boolean openExternal = false;
+        boolean clearHistory = false;
+
+        // If there are properties, then set them on the Activity
+        HashMap<String, Object> params = new HashMap<String, Object>();
+        if (props != null) {
+            JSONArray keys = props.names();
+            for (int i = 0; i < keys.length(); i++) {
+                String key = keys.getString(i);
+                if (key.equals("wait")) {
+                    wait = props.getInt(key);
+                } else if (key.equalsIgnoreCase("openexternal")) {
+                    openExternal = props.getBoolean(key);
+                } else if (key.equalsIgnoreCase("clearhistory")) {
+                    clearHistory = props.getBoolean(key);
+                } else {
+                    Object value = props.get(key);
+                    if (value == null) {
+
+                    } else if (value.getClass().equals(String.class)) {
+                        params.put(key, (String) value);
+                    } else if (value.getClass().equals(Boolean.class)) {
+                        params.put(key, (Boolean) value);
+                    } else if (value.getClass().equals(Integer.class)) {
+                        params.put(key, (Integer) value);
+                    }
+                }
+            }
+        }
+
+        if (wait > 0) {
+            try {
+                synchronized (this) {
+                    this.wait(wait);
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        ((WebBridge) this.ctx).showWebPage(url, openExternal, clearHistory, params);
+    }
+
+    /**
+     * Clear page history for the app.
+     */
+    public void clearHistory() {
+        final WebBridge bridge = (WebBridge) this.ctx;
+        bridge.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                bridge.clearBridgeHistory();
+            }
+        });
+    }
+
+    /**
+     * Go to previous page displayed.
+     * This is the same as pressing the backbutton on Android device.
+     */
+    public void backHistory() {
+        this.ctx.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                ((WebBridge) App.this.ctx).backHistory();
+            }
+        });
+    }
+
+    /**
+     * Exit the Android application.
+     */
+    public void exitApp() {
+        ((WebBridge) this.ctx).finish();
+    }
+
+    public void urlHashChange() {
+        final BridgeInterface context = this.ctx;
+        this.ctx.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                context.onUpdateWebviewHistory();
+            }
+        });
+    }
+}

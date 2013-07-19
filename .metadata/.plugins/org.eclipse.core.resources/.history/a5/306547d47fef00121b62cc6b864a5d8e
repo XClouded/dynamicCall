@@ -1,0 +1,120 @@
+package cn.uc.gamesdk.view;
+
+import org.json.JSONObject;
+
+import android.content.Context;
+import android.graphics.Color;
+import android.view.View;
+import android.widget.Button;
+import cn.uc.gamesdk.bridge.WebBridge;
+import cn.uc.gamesdk.common.UCApplication;
+import cn.uc.gamesdk.log.UCLog;
+
+/**
+ * 简单的颜色按钮,支持动态更换颜色。
+ * 颜色有：
+ * <pre>
+ * colorEnabled 按钮有效的颜色
+ * colorPressed 按钮按下的颜色
+ * borderColor 边框颜色
+ * </pre>
+ * 
+ * @author chenzh
+ * 
+ */
+public class UCSimpleButton extends Button {
+    private static final String CLASS_NAME = "UCSimpleButton";
+
+    private boolean _enabled = true;
+
+    public int colorEnabled = Color.parseColor("#4A4A4A");
+    public int colorPressed = Color.parseColor("#2C2C2C");
+    public int borderColor = Color.parseColor("#2F2F2F");
+
+    // 判断是否为返回按钮
+    private boolean isBackBtn = false;
+
+    private String action;
+    
+    /**
+     * @param jsonObj
+     */
+    public void config(JSONObject jsonObj) {
+        UCLog.debug(CLASS_NAME, "config", "config = " + (jsonObj != null ? jsonObj.toString() : ""));
+        if (jsonObj == null) {
+            return;
+        }
+
+        if (jsonObj.has("borderColor")) {
+            this.borderColor = Color.parseColor(jsonObj.optString("borderColor"));
+        }
+        if (jsonObj.has("colorPressed")) {
+            this.colorPressed = Color.parseColor(jsonObj.optString("colorPressed"));
+        }
+        if (jsonObj.has("colorEnabled")) {
+            this.colorEnabled = Color.parseColor(jsonObj.optString("colorEnabled"));
+        }
+
+        if (jsonObj.has("btnShape")) {
+            String shape = jsonObj.optString("btnShape");
+            if ("rect".equals(shape)) {
+                isBackBtn = false;
+            }
+            if ("back".equals(shape)) {
+                isBackBtn = true;
+            }
+        }
+
+        this.refreshBackground();
+        if (jsonObj.has("text")) {
+            String text = jsonObj.optString("text", "");
+            this.setText(text);
+        }
+        
+        if(jsonObj.has("btnAction")){
+            action = jsonObj.optString("btnAction");
+        }
+    }
+    
+    public String getAction(){
+        return action;
+    }
+
+    public void refreshBackground() {
+        if (!isBackBtn) {
+            this.setPadding(UCApplication.dipToPx(15), UCApplication.dipToPx(2), UCApplication.dipToPx(12), UCApplication.dipToPx(2));
+            this.setBackgroundDrawable(DrawableUtil.getUCStateDrawable(colorEnabled, colorPressed, borderColor));
+        } else {
+            this.setPadding(UCApplication.dipToPx(19), UCApplication.dipToPx(2), UCApplication.dipToPx(12), UCApplication.dipToPx(2));
+            this.setBackgroundDrawable(DrawableUtil.getUCBackBtnStateDrawable(colorEnabled, colorPressed, borderColor, UCApplication.dipToPx(WebBridge.TOP_BAR_HEIGHT_DIP - 7) - 10));
+        }
+    }
+
+    public UCSimpleButton(Context context) {
+        super(context);
+        this.setTextColor(Color.WHITE);
+        this.refreshBackground();
+    }
+
+    public void setEnabled(boolean enabled) {
+        _enabled = enabled;
+        if (_enabled) {
+            this.setVisibility(View.VISIBLE);
+        } else {
+            this.setVisibility(View.GONE);
+        }
+    }
+
+    public boolean isEnabled() {
+        return _enabled;
+    }
+
+    public void setBackBtnBackgroundDrawable(int height) {
+        isBackBtn = true;
+        this.setBackgroundDrawable(DrawableUtil.getUCBackBtnStateDrawable(colorEnabled, colorPressed, borderColor, UCApplication.dipToPx(WebBridge.TOP_BAR_HEIGHT_DIP - 7) - 10));
+    }
+    
+    public boolean isBackBtn() {
+        return isBackBtn;
+    }
+}

@@ -1,0 +1,58 @@
+package cn.uc.gamesdk.bridge;
+
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Iterator;
+import java.util.Vector;
+
+import cn.uc.gamesdk.log.UCLog;
+
+/**
+ * 信任域名为webbridge加入域名访问的限制。
+ * 
+ * @author chenzh
+ */
+public class TrustDomain {
+    public static String CLASS_NAME = "TrustDomain";
+
+    /***
+     * bridge 信任域名列表
+     * 
+     * 限制bridge的webview可以访问的域名范围
+     */
+    public static final Vector<String> trustDomainList = new Vector<String>();
+
+    /**
+     * 判断url是否来自信任的域名
+     * 
+     * @param url
+     * @return
+     */
+    public static boolean isUrlFromTrustDomain(String url) {
+        // 获取host
+        String host = null;
+        try {
+            URL urlObj = new URL(url);
+            host = urlObj.getHost();
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+
+        if (host == null){
+            UCLog.debug(CLASS_NAME, "isUrlFromTrustDomain", "host null");
+            return false;
+        }
+
+        // 进行host匹配
+        Iterator<String> tit = trustDomainList.iterator();
+        while (tit.hasNext()) {
+            String p = tit.next();
+            if (host.indexOf(p) >= 0) {
+                return true;
+            }
+        }
+
+        UCLog.warn(CLASS_NAME, "isUrlFromTrustDomain", "url=" + url + ", 不在信任域名列表中");
+        return false;
+    }
+}

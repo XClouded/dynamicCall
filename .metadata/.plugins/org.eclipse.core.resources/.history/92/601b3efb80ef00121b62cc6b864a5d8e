@@ -1,0 +1,233 @@
+package cn.uc.gamesdk.bridge;
+
+import java.lang.reflect.Method;
+
+import org.json.JSONObject;
+
+import android.annotation.TargetApi;
+import android.content.Context;
+import android.os.Build;
+import android.util.Log;
+import android.view.MotionEvent;
+import android.view.View;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebSettings.LayoutAlgorithm;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import cn.uc.gamesdk.common.CommonConst;
+import cn.uc.gamesdk.log.UCLog;
+import cn.uc.gamesdk.setting.SdkPreference;
+
+@SuppressWarnings("deprecation")
+public class BridgeWebView extends WebView {
+    private static final String CLASS_NAME = "BridgeWebView";
+
+    private static class WebviewOnTouchListener implements OnTouchListener {
+        public boolean scrollable = true;
+
+        @Override
+        public boolean onTouch(android.view.View v, MotionEvent event) {
+            return !scrollable && (event.getAction() == MotionEvent.ACTION_MOVE);
+        }
+    }
+
+    private WebBridge mContext;
+
+    private WebviewOnTouchListener mListener;
+
+    public BridgeWebView(WebBridge context, WebChromeClient wcc, WebViewClient wvc) {
+        super(context);
+        this.mContext = context;
+        mListener = new WebviewOnTouchListener();
+        this.setOnTouchListener(mListener);
+        this.setWebChromeClient(wcc);
+        this.setWebViewClient(wvc);
+        this.setup();
+    }
+
+    @TargetApi(11)
+    public void setup() {
+        WebView.enablePlatformNotifications();
+        this.setInitialScale(0);
+        this.setVerticalScrollBarEnabled(false);
+        this.setHorizontalScrollBarEnabled(false);
+        this.requestFocusFromTouch();
+        this.requestFocus();
+        this.setFocusable(true);
+        this.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent e) {
+                switch (e.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                case MotionEvent.ACTION_UP:
+                    if (!v.hasFocus()) {
+                        v.requestFocus();
+                    }
+                    break;
+                }
+                return false;
+            }
+        });
+
+
+        /**
+         * ANDROID 1.6 (VER=4) 经过测试1.6的模拟器webview的console.log
+         * 函数，不会在logcat打出日志，在此使用addJavascriptInterface，
+         * 对html应用加入自定义console对象，并模拟console行为。
+         */
+        if (Integer.valueOf(android.os.Build.VERSION.SDK) <= 7) {
+            this.addJavascriptInterface(new Console(), "console");
+        }
+
+        /**
+         * 在js中声明一个ucgamesdk_android的对象。
+         * 注!!!!：请不要在该类添加方法，并在js调用所添加的方法，这样会引起android2.3 webview崩溃的bug
+         */
+        class UCGameSDK {
+        }
+        this.addJavascriptInterface(new UCGameSDK(), "UCGameSDK");
+
+        WebSettings webSettings = this.getSettings();
+        webSettings.setDefaultTextEncodingName("utf-8");
+        webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
+        webSettings.setNeedInitialFocus(true);
+        webSettings.setSaveFormData(false);
+        webSettings.setSavePassword(false);
+        webSettings.setPluginsEnabled(true);
+        webSettings.setBuiltInZoomControls(false);
+        webSettings.setSupportZoom(true);
+        webSettings.setLayoutAlgorithm(LayoutAlgorithm.NORMAL);
+        webSettings.setJavaScriptEnabled(true);
+        webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+
+        Class webSettingCls = webSettings.getClass();
+
+        //-------设置离线缓存--------
+//        UCLog.debug(CLASS_NAME, "setup", "app cache policy = " + SdkPreference.getAppCachePolicy());
+
+//        int appCachePolicy = SdkPreference.getAppCachePolicy();
+
+        switch (appCachePolicy) {
+        case CommonConst.APP_CACHE_POLICY_ENABLE:
+            webSettings.setAllowFileAccess(true);
+            String appCachePath = getAppCachePath();
+            BridgeReflect.invokeMethod(webSettingCls, webSettings, "setAppCacheMaxSize", new Class[] { Long.TYPE }, new Object[] { Long.valueOf(8 * 1024 * 1024) });
+            BridgeReflect.invokeMethod(webSettingCls, webSettings, "setAppCacheEnabled", new Class[] { Boolean.TYPE }, new Object[] { Boolean.TRUE });
+            BridgeReflect.invokeMethod(webSettingCls, webSettings, "setAppCachePath", new Class[] { String.class }, new Object[] { appCachePath });
+            break;
+        case CommonConst.APP_CACHE_POLICY_DISABLE:
+            break;
+        case CommonConst.APP_CACHE_POLICY_DISABLE_AND_CLEAR:
+            // 不要在这里做清理webview缓存的操作，会引起SQLLiteDiskException
+            //            mContext.clearWebviewCache();
+            break;
+        default:
+            break;
+        }
+
+        //-------普通设置--------
+        BridgeReflect.invokeMethod(webSettingCls, webSettings, "setDomStorageEnabled", new Class[] { Boolean.TYPE }, new Object[] { Boolean.valueOf(true) });
+        // Set the nav dump for HTC 2.x devices (disabling for ICS/Jellybean)
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.HONEYCOMB)
+            webSettings.setNavDump(true);
+        BridgeReflect.invokeMethod(webSettingCls, webSettings, "setPageCacheCapacity", new Class[] { Integer.TYPE }, new Object[] { Integer.valueOf(20) });
+        BridgeReflect.invokeMethod(webSettingCls, webSettings, "setDatabaseEnabled", new Class[] { Boolean.TYPE }, new Object[] { Boolean.valueOf(true) });
+        String dbPath = getDataBasePath();
+        BridgeReflect.invokeMethod(webSettingCls, webSettings, "setDatabasePath", new Class[] { String.class }, new Object[] { dbPath });
+
+        disableGPU();
+    }
+
+    @TargetApi(11)
+    private void disableGPU() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+//            new Handler().postDelayed(new Runnable() {
+//                public void run() {
+                    try {
+                        if (isHardwareAcceleratedJudgeEveryTime())
+                            BridgeWebView.this.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+//            },500);
+//        }
+    }
+
+    public boolean isHardwareAcceleratedJudgeEveryTime() {
+        boolean hardwareAcceleration = false;
+        if (mContext.getWindow().getDecorView() != null) {
+            // View.isHardwareAccelerated() is supported from version 3.0
+            if (android.os.Build.VERSION.SDK_INT >= 11) {
+                try {
+                    if (null != mContext.getWindow().getDecorView()) {
+                        Class<BridgeWebView> c = BridgeWebView.class;
+                        java.lang.reflect.Method method = c.getMethod("isHardwareAccelerated", (Class[]) null);
+                        hardwareAcceleration = (Boolean) method.invoke(this, (Object[]) null);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    hardwareAcceleration = false;
+                }
+            }
+        }
+        Log.e("demonk", "is:" + hardwareAcceleration);
+        Log.e("demonk","ts:"+this.isHardwareAccelerated());
+        return hardwareAcceleration;
+    }
+    
+    private boolean isGPUOn() {
+        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+            try {
+
+                Method isHardwareAccelerated = mContext.getWindow().getDecorView().getClass().getMethod("isHardwareAccelerated", null);
+                Object o = isHardwareAccelerated.invoke(mContext.getWindow().getDecorView(), null);
+                Log.e("demonk", "" + o);
+                if (null != o && o instanceof Boolean && (Boolean) o) {
+
+                    return true;
+                    //                    Method setLayerType = this.getClass().getMethod("setLayerType", int.class, android.graphics.Paint.class);
+                    //                    setLayerType.invoke(this, 1, null);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 判断是否Android4.0.3或Android4.0.4
+     * 
+     * @return
+     */
+    /*
+     * private boolean isICS() {
+     * boolean isICS = (Build.VERSION.SDK_INT == 14) || (Build.VERSION.SDK_INT == 15);
+     * UCLog.debug(CLASS_NAME, "isICS", "result = " + isICS);
+     * return isICS;
+     * }
+     */
+
+
+
+    public void setConfig(JSONObject config) {
+        UCLog.debug(CLASS_NAME, "setConfig", "config = " + config);
+        if (config == null) {
+            return;
+        }
+        if (config.has("scrollable")) {
+            boolean scrollable = config.optBoolean("scrollable", true);
+            mListener.scrollable = scrollable;
+        }
+    }
+
+    private String getAppCachePath() {
+        return mContext.getApplicationContext().getCacheDir().getAbsolutePath();
+    }
+
+    private String getDataBasePath() {
+        return mContext.getApplicationContext().getDir("database", Context.MODE_PRIVATE).getPath();
+    }
+}

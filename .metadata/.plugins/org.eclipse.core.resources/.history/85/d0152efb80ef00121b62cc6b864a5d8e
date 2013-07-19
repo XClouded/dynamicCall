@@ -1,0 +1,862 @@
+package cn.uc.gamesdk.view;
+
+import java.util.ArrayList;
+
+import android.annotation.TargetApi;
+import android.content.Intent;
+import android.os.Build;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.TextView;
+import cn.uc.gamesdk.bridge.WebBridge;
+
+/**
+ * Sdk的界面容器
+ * 
+ * @author chenzh
+ */
+public class SdkWebActivity extends WebBridge {
+
+    /**
+     * 主界面的UI行为<br/>
+     * 
+     * 当ACTIVITY_WORK_TYPE ＝ SdkWebActivity.ACTIVITY_WORK_TYPE_REX_UPDATE 时,
+     * 执行立即更新UI资源操作<br/>
+     * 当ACTIVITY_WORK_TYPE ＝ SdkWebActivity.ACTIVITY_WORK_TYPE_WEBVIEW 时,
+     * 执行正常加载页面流程<br/>
+     * 当ACTIVITY_WORK_TYPE ＝ SdkWebActivity.ACTIVITY_WORK_TYPE_NATIVE_UI 时,
+     * 执行加载原生即面的行为<br/>
+     */
+    public static final String ACTIVITY_WORK_TYPE = "activity_work_type";
+    public static final int ACTIVITY_WORK_TYPE_REX_UPDATE = 1; // 立即更新UI资源
+    public static final int ACTIVITY_WORK_TYPE_WEBVIEW = 2; // 加载并显示页面
+    public static final int ACTIVITY_WORK_TYPE_WEBVIEW_WAP_PAY = 3; // wap支付
+    public static final int ACTIVITY_WORK_TYPE_NATIVE_UI = 4; // 原生界面
+
+    /**
+     * 定义UI资源操作
+     */
+    public static final String SDK_REX_ACTION = "rex_action";
+    public static final int SDK_REX_ACTION_INIT = 1; // UI资源初始化
+    public static final int SDK_REX_ACTION_UPDATE = 2; // UI资源更新
+
+    /**
+     * 字符串常量
+     */
+    public static final String STRING_LOADING = "正在加载";
+    public static final String STRING_UPDATING = "正在更新";
+
+    private static final String CLASS_NAME = "SdkWebActivity";
+    private static final int ID_BOTTOM_MENU = 0x230948;
+
+    /**
+     * 当前加载的h5界面入口key
+     */
+    private String _curH5EntryKey;
+
+    /**
+     * ui的业务类型。例如：“登录”，“支付”, “九游社区” 详细见{@link UILoader.UI_BUSINESS}
+     */
+    private String _curUIBusiness;
+
+    /**
+     * 在打开节点前为该节点对应的url需要带上的哈希
+     */
+    private String _pageHash;
+
+    /**
+     * 在打开节点前为该节点对应的url需要带上的get参数
+     */
+    private String _pageParams;
+
+    /**
+     * Activity当前工作类型。{@link SdkWebActivity.ACTIVITY_WORK_TYPE}
+     */
+    private int _workType;
+
+//    private UCSimpleButton _btnBackPage; // 页面返回按钮
+//    private UCSimpleButton _btnBackGame = null; // 返回游戏按钮
+    private TextView _viewTitle = null; // 顶部栏标题
+    private View _topBar = null; // 顶部栏
+    private View _bottomMenu = null; // 底部菜单
+
+//    private BottomMenuViewCtrl _bottomViewCtrl = null;// 底拦viewcontroller
+    private boolean holdBackPageBtnVisbilePersist = false;
+
+//    private OrientationChangeParser orientChangeCtrl = new OrientationChangeParser();;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+//        UCLog.debug(CLASS_NAME, "onCreate", "soucepageinfo=" + CommonService.currentNativeSourcePageInfo);
+
+        // --------------------- 避免pid被kill的问题－－－－－－－－－－－－－－－
+        // 避免pid被kill的问题 by chenzh
+//        if (savedInstanceState != null) {
+//            GlobalVars.restore(savedInstanceState);
+//        }
+        // 为避免状态不正确导致界面异常，直接关闭当前界面。这种情况下需要游戏重新进行初始化和登录。
+//        GlobalVars.context = getApplicationContext();
+        // --------------------- end －－－－－－－－－－－－－－－
+        // 获取intent参数
+        Intent intent = this.getIntent();
+        Bundle bundle = intent.getExtras();
+        if (bundle == null)
+            bundle = new Bundle();
+
+        _workType = bundle.getInt(ACTIVITY_WORK_TYPE);
+//        if (_workType == ACTIVITY_WORK_TYPE_WEBVIEW) {
+//            _bottomViewCtrl = new BottomMenuViewCtrl(getContext());
+//            _bottomViewCtrl.setAfterTouchListener(new IAfterTouchListener() {
+//
+//                @Override
+//                public void callback() {
+//                    pageStartedTaskList.add(new Runnable() {
+//
+//                        @Override
+//                        public void run() {
+//                            SdkWebActivity.this.clearBridgeHistory();
+//                        }
+//                    });
+//                }
+//            });
+//        }
+
+        
+        String url = bundle.getString("url");
+        
+        loadUrl("file:///");
+//        String business = bundle.getString(UILoader.UI_BUSINESS);
+//        if ((UILoader.UI_BUSINESS_U_CHARGE.equals(business) || UILoader.UI_BUSINESS_ENTER_TIPS_PAGE.equals(business)) && StringUtil.isNotEmpty(url)) {
+//            _curUIBusiness = business;
+//            // 加载指定的URL页面
+//            loadUrl(url);
+//        } else {
+//            // 进入sdk界面           
+//            enterSdkUI(intent, false);
+//
+//        }
+
+    }
+
+//    private void enterSdkUI(Intent intent, boolean isNewIntent) {
+////        UCLog.debug(CLASS_NAME, "enterSdkUI", "isNewIntent=" + isNewIntent);
+//        Bundle bundle = intent.getExtras();
+//        if (bundle == null) {
+//            _curH5EntryKey = null;
+//            _curUIBusiness = null;
+//            return;
+//        }
+        
+        //ADD BY ZXY 2013-5-25/28
+        //这里是打开SDK H5界面前的总入口，需读取界面入口配置，刷新ui资源入口映射缓存 UIRexCtrlConf.h5EntryMap 。
+        //此操作需在初始化时执行，以保证SDK各操作能够读取正确的配置。为避免assets资源复制和资源更新可能带来的配置与H5页面不一致，此处也执行一次。
+//        UIRexConfCtrl.initUIHtmlEntryConf();  
+
+        
+//        GlobalVars.isSdkShowing = true;
+
+//        _workType = bundle.getInt(ACTIVITY_WORK_TYPE);
+//        _curH5EntryKey = bundle.getString(UILoader.H5_ENTRY_KEY); // 获取htmlEntryKey参数
+//        _curUIBusiness = bundle.getString(UILoader.UI_BUSINESS);
+//        _pageHash = bundle.getString(UILoader.UI_HASH);
+//        _pageParams = bundle.getString(UILoader.UI_GETPARAMS);
+
+        // 设置bottomViewCtrl的business
+//        if (_bottomViewCtrl != null) {
+//            _bottomViewCtrl.getHandler().sendMessage(
+//                    Message.obtain(_bottomViewCtrl.getHandler(), BottomMenuViewCtrl.HANDLER_UPDATE_IMAGEVIEW_STATUS, new MenuItemActionParams(_curH5EntryKey, _pageHash, _pageParams)));
+//        }
+
+        // 加载对应的html
+//        if (_workType == SdkWebActivity.ACTIVITY_WORK_TYPE_WEBVIEW) {
+//            final String finalH5EntryKey = _curH5EntryKey;
+//            orientChange(UIRexCtrl.getH5EntryUrl(finalH5EntryKey));
+//            if (isNewIntent) {
+//                loadUrlByH5EntryKey(_curH5EntryKey, null);
+//            } else {
+//                loadUrlByH5EntryKeyAfterCheckRex(bundle);
+//            }
+//            return;
+//        }
+
+//        UCLog.debug(CLASS_NAME, "onCreate", "soucepageinfo = " + CommonService.currentNativeSourcePageInfo);
+//    }
+
+
+//    private void loadUrlByH5EntryKeyAfterCheckRex(Bundle bundle) {
+//        final Bundle finalBundle = bundle;
+//        UCLog.debug(CLASS_NAME, "loadUIHtmlByEntryKey", "是否正在下载：" + UIRexCtrl.isRexDownloading() + ", 下载使用的更新频率：" + UIRexCtrl.curdownloadingUpdateFreq);
+//        // 条件：资源正在下载 且 下载使用的更新频率为零 界面等待下载更新完成
+//        if (UIRexCtrl.isRexDownloading() && UIRexCtrl.curdownloadingUpdateFreq == 0) {
+//            loadUrlByH5EntryKeyAfterWaitForRexDownUnzip(bundle);
+//        } else if (UIRexCtrl.curdownloadingUpdateFreq == 0 && !UIRexUnzip.getIsUnzipping()) {
+//            loadUrlByH5EntryKeyAfterCheckRexUpdate(finalBundle);
+//        } else {
+//            loadUrlByH5EntryKeyAfterUzip(finalBundle);
+//        }
+//    }
+
+    /**
+     * 
+     * 等待资源检查更新后（有更新时解压更新后），根据_curH5EntryKey加载url。
+     * 
+     * @param finalBundle
+     */
+//    private void loadUrlByH5EntryKeyAfterCheckRexUpdate(final Bundle finalBundle) {
+//        final String finalH5EntryKey = _curH5EntryKey;
+//        final SdkWebActivity me = this;
+//        me.initWebUI(UIRexCtrl.getH5EntryUrl(finalH5EntryKey));
+//        // 设置进度条进度20
+//        Message msg = Message.obtain(super.mHandler, WebBridge.PROGRESS_UPDATE, Integer.valueOf(20));
+//        msg.sendToTarget();
+//        UIRexCtrl.checkUpdate(UIRexCtrl.isRexStorageUseSDCard(), new ICallback<String>() {
+//            @Override
+//            public void callback(String msg) {
+//                
+//                //ADD BY ZXY 2013-5-25/28/29
+//                //这里是更新资源（资源解压）完成后，需读取界面入口配置，刷新ui资源入口映射缓存 UIRexCtrlConf.h5EntryMap 。
+//                UIRexConfCtrl.initUIHtmlEntryConf();
+//
+//                me.loadUrlByH5EntryKey(finalH5EntryKey, finalBundle);
+//            }
+//        });
+//    }
+
+    /**
+     * 
+     * 等待资源解压，根据_curH5EntryKey加载url。
+     * 
+     * @param finalBundle
+     */
+//    private void loadUrlByH5EntryKeyAfterUzip(final Bundle finalBundle) {
+//        final String finalH5EntryKey = _curH5EntryKey;
+//        final SdkWebActivity me = this;
+//        me.initWebUI(UIRexCtrl.getH5EntryUrl(finalH5EntryKey));
+//        // 设置进度条进度20
+//        Message msg = Message.obtain(super.mHandler, WebBridge.PROGRESS_UPDATE, Integer.valueOf(20));
+//        msg.sendToTarget();
+//        UIRexUnzip.setUnzipListener(UIRexCtrl.isRexStorageUseSDCard(), new ICallback<Boolean>() {
+//            @Override
+//            public void callback(Boolean obj) {
+//                
+//                //ADD BY ZXY 2013-5-25/28/29
+//                //这里是等待资源解压完成后，需读取界面入口配置，刷新ui资源入口映射缓存 UIRexCtrlConf.h5EntryMap 。
+//                UIRexConfCtrl.initUIHtmlEntryConf();
+//                me.loadUrlByH5EntryKey(finalH5EntryKey, finalBundle);
+//            }
+//        });
+//
+//    }
+
+    /**
+     * 
+     * 等待资源下载完成，解压完成后加载页面url
+     * 
+     * @param finalBundle
+     */
+//    private void loadUrlByH5EntryKeyAfterWaitForRexDownUnzip(final Bundle finalBundle) {
+//        this.spinnerStart(STRING_UPDATING, LoadingMask.TYPE_NORMAL);
+//        final String finalH5EntryKey = _curH5EntryKey;
+//        final SdkWebActivity me = this;
+//        UIRexCtrl.setRexDownloadListener(new ICallback<Boolean>() {
+//            @Override
+//            public void callback(Boolean isDownSuccess) {
+//                if (isDownSuccess == true) {
+//                    if (UIRexUnzip.syncCheckUpdate(UIRexCtrl.isRexStorageUseSDCard())) {
+//                    }
+//                    // 更新失败，清空当前有效资源项目的数据库记录
+//                    else {
+//                        UIRexCtrl.clearRexData(UIRexCtrl.isRexStorageUseSDCard());
+//                    }
+//                  //ADD BY ZXY 2013-5-25/28/29
+//                    //这里是下载成功后，解压完成或失败，都需读取界面入口配置，刷新ui资源入口映射缓存 UIRexCtrlConf.h5EntryMap 。
+//                    UIRexConfCtrl.initUIHtmlEntryConf();
+//
+//                }
+//                me.spinnerStop();
+//                me.loadUrlByH5EntryKey(finalH5EntryKey, finalBundle);
+//            }
+//        });
+//    }
+
+    /**
+     * 根据url进行横竖屏切换
+//     */
+//    private void orientChange(String url) {
+//        UCLog.debug(CLASS_NAME, "orientChange", "url=" + url);
+//        if (orientChangeCtrl.isOrientChagneEnable(url)) {
+//            if (UCApplication.isSdkOrientationLandscape()) {
+//                this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+//            } else {
+//                this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+//            }
+//        } else {
+//            this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+//        }
+//    }
+
+//    private void loadUrlByH5EntryKey(String h5EntryKey, Bundle bundle) {
+//        String url = UIRexCtrl.getH5EntryUrl(h5EntryKey);
+//        if (_pageParams != null && _pageParams.length() > 0)
+//            url += "?" + _pageParams;
+//        if (_pageHash != null && _pageHash.length() > 0)
+//            url += "#!" + _pageHash;
+//        UCLog.debug(CLASS_NAME, "onCreate", "进入界面，界面入口key=" + h5EntryKey + "，界面url=" + url);
+//        this.loadUrl(url);
+//    }
+
+    /**
+     * 当activiy已经存在的时候，才会被调用
+     */
+//    @Override
+//    protected void onNewIntent(Intent intent) {
+//        super.onNewIntent(intent);
+//        UCLog.debug(CLASS_NAME, "onNewIntent", " 当activiy已经存在的时候 enterSdkUI ");
+//        enterSdkUI(intent, true);
+//    }
+
+    /**
+     * 保存SDK状态，主要是保存全局变量的值，以能够在游戏被切换到后台时进程被杀后能够恢复。
+     * 
+     * @see android.app.Activity#onSaveInstanceState(android.os.Bundle)
+     */
+//    @Override
+//    protected void onSaveInstanceState(Bundle outState) {
+//        super.onSaveInstanceState(outState);
+//        GlobalVars.save(outState);
+//    }
+
+//    @Override
+//    public void onDestroy() {
+//        this.spinnerStop();
+//        LoadingMask.destoryMask();
+//        // 更新通知数目
+//        MenuCtrl.callUpdateMenuRemote("menu", false);
+//        // 取消注册监听广播
+//        if (_bottomViewCtrl != null)
+//            _bottomViewCtrl.unRegisterBroadcast();
+//
+//        if (UILoader.UI_BUSINESS_ENTER_TIPS_PAGE.equals(_curUIBusiness)) {
+//            // 设置tips可以显示
+//            TipsInfoCtrl.openTipsShow();
+//        }
+//
+//        super.onDestroy();
+//    }
+
+//    @Override
+//    public boolean onKeyDown(int keyCode, KeyEvent event) {
+//        if (keyCode == KeyEvent.KEYCODE_BACK) {// 按了后退键，返回上一个界面，需要帮助写页面close日志
+//            UCLog.dumpClosedPageStatLogs();
+//        }
+//        return super.onKeyDown(keyCode, event);
+//    }
+
+    /*
+     * 恢复SDK状态，主要是恢复SDK需要用到的全局变量
+     * 
+     * @see android.app.Activity#onRestoreInstanceState(android.os.Bundle)
+     * 
+     * @author wangcj@ucweb.com <br> Create: 2012-07-24
+     */
+//    @Override
+//    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+//        super.onRestoreInstanceState(savedInstanceState);
+//        GlobalVars.restore(savedInstanceState);
+//        // 为避免状态不正确导致界面异常，直接关闭当前界面。这种情况下需要游戏重新进行初始化和登录。
+//        GlobalVars.context = getApplicationContext();
+//
+//        // 需要恢复，是由于内存不足被kill的情况，需要写killed统计日志
+//        // 需要确认是否在这里写统计日志，例如用于pv统计等。
+//        // UCLog.dumpKilledStatLogs();
+//
+//        finish();
+//    }
+
+//    @Override
+//    public void onConfigurationChanged(Configuration paramConfiguration) {
+//        super.onConfigurationChanged(paramConfiguration);
+//    }
+
+//    @Override
+//    public void finish() {
+//        super.finish();
+//        // 业务推出通知：登录，支付，九游社区
+//        if (UILoader.UI_BUSINESS_LOGIN.equals(_curUIBusiness)) {
+//            UCCallbackListenersSets.callbackLoginResult(UCGameSDKStatusCode.LOGIN_EXIT, "登录退出");
+//        } else if (UILoader.UI_BUSINESS_BIND_GUEST.equals(_curUIBusiness)) {
+//            // 属于激活绑定的callback
+//            UCCallbackListenersSets.callbackBindGuestResult(UCGameSDKStatusCode.BIND_EXIT, "激活绑定退出", GameOperation.bindResult);
+//        } else if (UILoader.UI_BUSINESS_PAY.equals(_curUIBusiness)) {
+//            UCCallbackListenersSets.callbackOrderSubmitResult(UCGameSDKStatusCode.PAY_USER_EXIT, null);
+//        } else if (UILoader.UI_BUSINESS_USER_CENTER.equals(_curUIBusiness)) {
+//            UCCallbackListenersSets.callbackUserCenterResult(UCGameSDKStatusCode.SUCCESS, "");
+//        } else if (UILoader.UI_BUSINESS_U_CHARGE.equals(_curUIBusiness)) {
+//            UCCallbackListenersSets.callbackUChargeResult(UCGameSDKStatusCode.SDK_CLOSE, "将要返回游戏界面");
+//        } else if (UILoader.UI_BUSINESS_ENTER_TIPS_PAGE.equals(_curUIBusiness)) {
+//            // 设置tips可以显示
+//            TipsInfoCtrl.openTipsShow();
+//        } else {
+//            UCCallbackListenersSets.callbackResult(_curUIBusiness, UCGameSDKStatusCode.SUCCESS, "界面退出");
+//        }
+//        UCCallbackListenersSets.flushCallbackLoginCache();
+//
+//        // 此操作是点了返回游戏按键，并关闭整个activity界面
+//        // 根据判断业务前缀是否为page. 开头的，如果是则写对应的关闭页面操作。
+//        UCLog.dumpClosedPageStatLogs();
+//        // 根据判断业务前缀是否为cost- 开头，如果是则写对应的耗时日志
+//        UCLog.dumpCostStatLogs();
+//
+//        // 调用上传日志
+//        UploadLogCtrl.callUploadLog();
+//
+//        // 当前来源页面清空
+//        CommonService.currentNativeSourcePageInfo = null;
+//        GlobalVars.isSdkShowing = false;
+//        _curH5EntryKey = null;
+//        checkUnzip();
+//        UIRexCtrl.assetsCopy();
+//    }
+
+    /**
+     * 
+     * 检查资源并解压
+     */
+//    private void checkUnzip() {
+//        RexProjDao rexProjDao = DaoFactory.getRexProjDao();
+//        RexProj toUpProj = rexProjDao.findUpdateNeededRexProj();
+//        if (toUpProj == null) {
+//            return;
+//        }
+//        new Thread(new Runnable() {
+//
+//            @Override
+//            public void run() {
+//                if (!UIRexUnzip.syncCheckUpdate(UIRexCtrl.isRexStorageUseSDCard())) {
+//                    UCLog.error(CLASS_NAME, "checkInitialized", ErrorLogConst.ERROR_BUSINESS_RESMGR, "没有资源项目，请求下载失败");
+//                }
+//            }
+//        }).start();
+//    }
+
+    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
+//    public void setUIConfig(JSONObject paramObj) {
+//        try {
+//            UCLog.debug(CLASS_NAME, "setUIConfig", "paramObj=" + paramObj);
+//            // 设置顶部栏样式
+//            if (paramObj.has("topBar")) {
+//                JSONObject topBarConfig = paramObj.optJSONObject("topBar");
+//                if (topBarConfig.has("text")) {
+//                    String topBarTitle = topBarConfig.optString("text", "");
+//                    _viewTitle.setText(topBarTitle);
+//                }
+//                if (topBarConfig.has("visible")) {
+//                    boolean topBarVisibile = topBarConfig.optBoolean("visible");
+//                    if (topBarVisibile) {
+//                        _topBar.setVisibility(View.VISIBLE);
+//                    } else {
+//                        _topBar.setVisibility(View.GONE);
+//                    }
+//                }
+//                if (topBarConfig.has("backgroundColor")) {
+//                    String topBarbackGroundColor = topBarConfig.optString("backgroundColor", "");
+//                    _topBar.setBackgroundColor(Color.parseColor(topBarbackGroundColor));
+//                }
+//            }
+//
+//            // 返回页面按钮
+//            if (paramObj.has("topBarBtnBackPage")) {
+//                JSONObject tbbbpJsonObj = paramObj.optJSONObject("topBarBtnBackPage");
+//                _btnBackPage.config(tbbbpJsonObj);
+//
+//                if (tbbbpJsonObj.has("visible")) {
+//                    boolean tbbbpVisibile = tbbbpJsonObj.optBoolean("visible");
+//                    /**
+//                     * 以下条件： 1 当在按钮行为为 后退历史。 2 当前webview没有后退历史 3 将设置该按钮为显示时 结果：
+//                     * 将该按钮设置为不显示
+//                     */
+//                    if ((tbbbpVisibile == true) && StringUtil.equals(BTN_ACTION_BACK_PAGE, _btnBackPage.getAction()) && (!this.hasBackHistory())) {
+//                        _btnBackPage.setEnabled(false);
+//                    } else {
+//                        _btnBackPage.setEnabled(tbbbpVisibile);
+//                    }
+//                }
+//
+//                if (tbbbpJsonObj.has("visible")) {
+//                    boolean flag = _btnBackPage.isEnabled();
+//
+//                    super.setBackHistroyEnable(flag);
+//
+//                    if (tbbbpJsonObj.has("visiblePersist")) {
+//                        holdBackPageBtnVisbilePersist = tbbbpJsonObj.optBoolean("visiblePersist");
+//                        if (holdBackPageBtnVisbilePersist) {
+//                            super.setKeyboardBackExitEnable(flag);
+//                        }
+//                    }
+//
+//                    if (tbbbpJsonObj.has("btnAction")) {
+//                        String action = tbbbpJsonObj.optString("btnAction");
+//                        setupBackPageAction(action);
+//                    }
+//                }
+//            }
+//
+//            if (paramObj.has("topBarBtnBackGame")) {
+//                JSONObject tbbbkJsonObj = paramObj.optJSONObject("topBarBtnBackGame");
+//                _btnBackGame.config(tbbbkJsonObj);
+//
+//                if (tbbbkJsonObj.has("btnAction")) {
+//                    String action = tbbbkJsonObj.optString("btnAction");
+//                    setupBackGameAction(action);
+//                }
+//
+//                if (tbbbkJsonObj.has("visible")) {
+//                    boolean tbbbkVisibile = tbbbkJsonObj.optBoolean("visible");
+//                    _btnBackGame.setEnabled(tbbbkVisibile);
+//                }
+//            }
+//
+//            if (paramObj.has("webview")) {
+//                JSONObject webviewConfig = paramObj.optJSONObject("webview");
+//                if (this.webView != null) {
+//                    this.webView.setConfig(webviewConfig);
+//                }
+//            }
+//        } catch (Exception e) {
+//            UCLog.warn(CLASS_NAME, "setUIConfig", "setUIConfig出现异常", e);
+//        }
+//    }
+//
+//    private boolean isUrlBlank(String url) {
+//        if (url == null) {
+//            return true;
+//        }
+//        if (url.startsWith(CommonConst.ABOUT_BLANK)) {
+//            return true;
+//        }
+//        return false;
+//    }
+//
+//    public void checkAndSetUIConfig(final String url, boolean notUseNewThread) {
+//        final SdkWebActivity me = this;
+//        if (!notUseNewThread) {
+//            UCThreadFactory.createAndStart(new Runnable() {
+//                @Override
+//                public void run() {
+//                    final JSONObject config = UIRexUIConfig.getUIConfigByUrl(url);
+//                    UCLog.debug(CLASS_NAME, "checkAndSetUIConfig", "url = " + url + ",uiConfig = " + (config != null ? config.toString() : ""));
+//                    if (config != null) {
+//                        me.runOnUiThread(new Runnable() {
+//                            @Override
+//                            public void run() {
+//                                me.setUIConfig(config);
+//                                me.checkBottomBarVisible(url);
+//                            }
+//                        });
+//                    }
+//                }
+//            });
+//        } else {
+//            final JSONObject config = UIRexUIConfig.getUIConfigByUrl(url);
+//            UCLog.debug(CLASS_NAME, "checkAndSetUIConfig", "url = " + url + ",uiConfig = " + (config != null ? config.toString() : ""));
+//            me.runOnUiThread(new Runnable() {
+//                @Override
+//                public void run() {
+//                    me.setUIConfig(config);
+//                    me.checkBottomBarVisible(url);
+//                }
+//            });
+//        }
+//    }
+
+
+    public void onPageStarted(final String url) {
+        super.onPageStarted(url);
+//        if (isUrlBlank(url)) {
+//            return;
+//        }
+//
+//        orientChange(url);
+//
+//        // 执行页面完成任务列表
+//        Iterator<Runnable> iter = pageStartedTaskList.iterator();
+//        while (iter.hasNext()) {
+//            ((Runnable) iter.next()).run();
+//        }
+//        // pageStartedTaskList.clear();
+//        checkAndSetUIConfig(url, false);
+    }
+
+    private ArrayList<Runnable> pageStartedTaskList = new ArrayList<Runnable>();
+
+    @Override
+    public void onPageFinished(final String url) {
+//        UCLog.debug(CLASS_NAME, "onPageFinished", "url = " + url);
+//
+//        if (isUrlBlank(url)) {
+//            return;
+//        }
+//
+//        orientChange(url);
+//
+//        // 执行页面完成任务列表
+//        Iterator<Runnable> iter = pageStartedTaskList.iterator();
+//        while (iter.hasNext()) {
+//            ((Runnable) iter.next()).run();
+//        }
+//        pageStartedTaskList.clear();// FIXME
+//                                    // 振华跟进下啦:在pagefinish才清空任务列表.pagestart要清除(asset文件有效?),pagefinish也要清除一次(http开头的有效?)
+//
+//      UCLog.debug(CLASS_NAME, "onPageFinished", "url = " + url);
+//      checkAndSetUIConfig(url, false);
+//      
+//
+//        if (_topBar != null) {
+//            if (_topBar.getVisibility() == View.GONE)
+//                this.loadUrl("javascript:try{bridge.fireDocumentEvent('topBarChanged', { visible : false, }); }catch(e){console.log(e);};");
+//            else
+//                this.loadUrl("javascript:try{bridge.fireDocumentEvent('topBarChanged', { visible : true, }); }catch(e){console.log(e);};");
+//        }
+//        /**
+//         * hack素雅版的忘记密码链接，去除跳转过程中产生的后退按钮
+//         */
+//        if (!UILoader.H5_ENTRY_KEY_FORGET_PASSWORD.equals(this._curH5EntryKey)) {
+//            return;
+//        }
+//        if (url.startsWith("http:") && url.indexOf("findPasswd.html") >= 0 && (url.indexOf("#")) < 0) {
+//            this.clearBridgeHistory();
+//        }
+        super.onPageFinished(url);
+    }
+
+    /*
+     * 顶部栏
+     */
+//    @Override
+//    protected View topBar(String url) {
+//        int color = Color.parseColor("#2C2C2C"); // 灰黑色
+//        // 按钮高度
+//        int __buttonHeight = UCApplication.dipToPx(TOP_BAR_HEIGHT_DIP - 7);
+//
+//        final RelativeLayout topBarLayout = new RelativeLayout(this);
+//        topBarLayout.setBackgroundColor(color);
+//
+//        // 设置页面返回按钮
+//        RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+//        layoutParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT, RelativeLayout.TRUE);
+//        if (Integer.valueOf(Build.VERSION.SDK) > 3) {
+//            layoutParams.setMargins(13, 0, 0, 0);
+//            layoutParams.addRule(15, -1);
+//        } else {
+//            layoutParams.setMargins(13, 9, 0, 0);
+//        }
+//
+//        _btnBackPage = new UCSimpleButton(this);
+//        _btnBackPage.setText("后退");
+//        _btnBackPage.setHeight(__buttonHeight);
+//        _btnBackPage.setEnabled(false);
+//        _btnBackPage.setBackBtnBackgroundDrawable(__buttonHeight - 10);
+//        setupBackPageAction(BTN_ACTION_BACK_PAGE);
+//
+//        // 将topBarLayout的(0, 0, 100dp, 35dp)的区域的触摸事件，分派给_btnBackPage
+//        topBarLayout.post(new Runnable() {
+//            @Override
+//            public void run() {
+//                final Rect extendArea = new Rect(0, 0, UCApplication.dipToPx(100), UCApplication.dipToPx(TOP_BAR_HEIGHT_DIP));
+//                topBarLayout.setTouchDelegate(new TouchDelegate(extendArea, _btnBackPage));
+//            }
+//        });
+//
+//        topBarLayout.addView(_btnBackPage, layoutParams);
+//
+//        // 设置游戏返回按钮
+//        layoutParams = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+//        layoutParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT, RelativeLayout.TRUE);
+//
+//        if (Integer.parseInt(Build.VERSION.SDK) > 3) {
+//            layoutParams.setMargins(0, 0, 13, 0);
+//            layoutParams.addRule(15, -1);
+//        } else {
+//            layoutParams.setMargins(0, 5, 13, 0);
+//        }
+//
+//        _btnBackGame = new UCSimpleButton(this);
+//        _btnBackGame.setText("返回游戏");
+//        setupBackGameAction(BTN_ACTION_BACK_GAME);
+//
+//        // 针对有来源页面的行为进行处理
+//        JSONObject cnsp = CommonService.currentNativeSourcePageInfo;
+//        if (cnsp != null) {
+//            _btnBackGame.setText("返回" + cnsp.optString("pageTitle"));
+//        }
+//
+//        _btnBackGame.setHeight(__buttonHeight);
+//        topBarLayout.addView(_btnBackGame, layoutParams);
+//
+//        // 设置标题
+//        int padding = UCApplication.dipToPx(3);
+//        _viewTitle = new TextView(this);
+//        _viewTitle.setGravity(Gravity.CENTER_VERTICAL);
+//        _viewTitle.setText("九游");
+//        _viewTitle.setTextColor(Color.WHITE);
+//        _viewTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24 - (TOP_BAR_HEIGHT_DIP / 10));
+//        _viewTitle.setPadding(0, padding, 0, padding);
+//
+//        layoutParams = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+//        if (Integer.parseInt(Build.VERSION.SDK) > 3) {
+//            layoutParams.addRule(13, -1);
+//        } else {
+//            layoutParams.addRule(14, -1);
+//            layoutParams.setMargins(0, 5, 0, 0);
+//        }
+//        layoutParams.addRule(RelativeLayout.CENTER_IN_PARENT, RelativeLayout.TRUE);
+//        topBarLayout.addView(_viewTitle, layoutParams);
+//        _topBar = topBarLayout;
+//        _topBar.setVisibility(View.GONE);
+//
+//        // 根据url进行导航条配置
+//        checkAndSetUIConfig(url, true);
+//
+//        return _topBar;
+//    }
+
+    // --------------------- 后退，返回游戏按钮行为定制－－－－－－－－－－－－－－－
+
+//    @Override
+//    protected View bottomBar() {
+//        if (_workType == SdkWebActivity.ACTIVITY_WORK_TYPE_WEBVIEW) {
+//            if (_bottomViewCtrl == null)
+//                _bottomViewCtrl = new BottomMenuViewCtrl(getContext());
+//            _bottomMenu = _bottomViewCtrl.getMenuView();
+//            _bottomMenu.setId(ID_BOTTOM_MENU);
+//            _bottomMenu.setVisibility(View.GONE);
+//            _bottomViewCtrl.getHandler().sendEmptyMessage(BasicMenuViewCtrl.HANDLER_UPDATE_NOTIFICATION_COUNT);
+//        }
+//        return _bottomMenu;
+//    }
+
+//    public void checkBottomBarVisible(String url) {
+//        UCLog.debug(CLASS_NAME, "checkBottomBarVisible","url = "+ url);
+//        
+//        if (_bottomViewCtrl != null) {
+//            String matchUrl = UIRexUIConfig.rmPrefix(url);
+//            List<String> urlsPatternList = _bottomViewCtrl.getMenuParams().getInVisibleUrls();
+//            if (urlsPatternList.size() == 0) {
+//                // 没有任何正则表达式,则所有的url都显示那个底部拦
+//                if (_bottomMenu != null)
+//                    _bottomMenu.setVisibility(View.GONE);
+//                return;
+//            }
+//            boolean invisible = true;// 默认都不显示,当遍历所有的url正则表达式,如果有其中一个符合,则将此值置为false,则该地址显示底部拦
+//            
+//            UCLog.debug(CLASS_NAME, "checkBottomBarVisible", "urlsPatternList = " + urlsPatternList);
+//            for (String urlsPatternString : urlsPatternList) {
+//                if (urlsPatternString.length() > 0) {
+//                   
+//                    if (RegxUtil.match(matchUrl, urlsPatternString)) {
+//                        
+//                        UCLog.debug(CLASS_NAME, "checkBottomBarVisible", "matchUrl = " + matchUrl + "  urlsPatternString = " + urlsPatternString);
+//                        invisible = false;
+//                        break;
+//                    }
+//                }
+//            }
+//            
+//           
+//            
+//            if (_bottomMenu != null) {
+//                if (invisible) {
+//                    _bottomMenu.setVisibility(View.GONE);
+//                } else {
+//                    _bottomMenu.setVisibility(View.VISIBLE);
+//                }
+//            }
+//            // 重置底拦每个item的宽度
+//            _bottomViewCtrl.resetItemsWidth();
+//        }
+//    }
+
+    private static final String BTN_ACTION_BACK_GAME = "backGame";
+    private static final String BTN_ACTION_BACK_PAGE = "backPage";
+//
+//    public void setupBackGameAction(final String action) {
+//        final SdkWebActivity me = this;
+//        if (BTN_ACTION_BACK_GAME.equals(action)) {
+//            _btnBackGame.setOnClickListener(new View.OnClickListener() {
+//                @Override
+//                public void onClick(View v) {
+//                    UCLog.dumpClosedPageStatLogs();
+//                    // 如果跳转到本地ui无效，关闭activity
+//                    if (!UILoader.tryToJumpToNativeUI()) {
+//                        SdkWebActivity.this.finish();
+//                    }
+//                }
+//            });
+//        } else {
+//            if (StringUtil.isNotEmpty(action)) {
+//                _btnBackGame.setOnClickListener(new View.OnClickListener() {
+//                    @Override
+//                    public void onClick(View v) {
+//                        me.loadUrl("javascript:try{bridge.fireDocumentEvent('bridgeTopBtnClicked', { action : '" + action + "', }); }catch(e){console.log(e);};");
+//                    }
+//                });
+//            }
+//        }
+//    }
+//
+//    public void setupBackPageAction(final String action) {
+//        final SdkWebActivity me = this;
+//        if (BTN_ACTION_BACK_PAGE.equals(action)) {
+//            _btnBackPage.setOnClickListener(new OnClickListener() {
+//                @Override
+//                public void onClick(View v) {
+//                    UCLog.dumpClosedPageStatLogs();// 记录页面关闭统计日志
+//                    SdkWebActivity.this.backHistory(); // 返回页面历史
+//                }
+//            });
+//        } else {
+//            if (StringUtil.isNotEmpty(action)) {
+//                _btnBackPage.setOnClickListener(new View.OnClickListener() {
+//                    @Override
+//                    public void onClick(View v) {
+//                        me.loadUrl("javascript:try{bridge.fireDocumentEvent('bridgeTopBtnClicked', { action : '" + action + "', }); }catch(e){console.log(e);};");
+//                    }
+//                });
+//            }
+//        }
+//    }
+
+    // --------------------- 按钮行为定制 END－－－－－－－－－－－－－－－
+
+    /**
+     * 监听webview访问历史,这个监听可能不是运行在ui线程的
+     */
+    @Override
+    public synchronized void onUpdateWebviewHistory() {
+        // override it
+//        if (this._btnBackPage == null)
+//            return;
+//
+//        // 后退按钮得隐藏显示行为已经被覆盖
+//        if (holdBackPageBtnVisbilePersist) {
+//            return;
+//        }
+//
+//        final SdkWebActivity me = this;
+//
+//        this.runOnUiThread(new Runnable() {
+//            @Override
+//            public void run() {
+//                final boolean hasBackHistory = SdkWebActivity.this.hasBackHistory();
+//                me.setBackHistroyEnable(hasBackHistory);
+//                if (hasBackHistory && _btnBackGame.isBackBtn()) {
+//                    SdkWebActivity.this._btnBackPage.setEnabled(true);
+//                } else {
+//                    SdkWebActivity.this._btnBackPage.setEnabled(false);
+//                }
+//            }
+//        });
+    }
+
+}

@@ -1,0 +1,235 @@
+package cn.uc.gamesdk.view;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import android.content.Intent;
+import cn.uc.gamesdk.common.GlobalVars;
+import cn.uc.gamesdk.service.CommonService;
+import cn.uc.gamesdk.util.StringUtil;
+
+/**
+ * @author chenzh
+ */
+public class UILoader {
+    private static final String PAGE_TITLE = "pageTitle";
+    private static final String PAGE_ID = "pageId";
+
+    /**
+     * ui业务分类名称，对应于资源节点名称
+     */
+    public static final String UI_BUSINESS = "uiBusiness";
+    public static final String UI_BUSINESS_LOGIN = "login";
+    public static final String UI_BUSINESS_PAY = "pay";
+    public static final String UI_BUSINESS_USER_CENTER = "userCenter";
+    public static final String UI_BUSINESS_BIND_GUEST = "bindGuest";
+    public static final String UI_BUSINESS_U_CHARGE = "uCharge"; //add by cbl 2013.3.5  该业务不是通过文件配置的
+    public static final String UI_BUSINESS_ENTER_TIPS_PAGE = "tipsPage"; //add by cbl 2013.4.2 该业务不是通过文件配置的
+
+    /**
+     * 节点url参数
+     */
+    public static final String UI_HASH = "uiHash";
+    public static final String UI_GETPARAMS = "uiGetParams";
+
+    /**
+     * hash参数
+     */
+    public static final String UI_HASH_BIND_GUEST = "user/regActivate";
+    public static final String UI_HASH_BIND_GUEST_PLATFROM = "user/regActivatePlf";
+
+    /**
+     * h5入口key，在assets目录下的ucgamesdk/config/init_proj.xml可以找到对应关系
+     */
+    public static final String H5_ENTRY_KEY = "h5EntryKey";
+    public static final String H5_ENTRY_KEY_LOGIN = "login";
+    public static final String H5_ENTRY_KEY_PAY = "pay";
+    public static final String H5_ENTRY_KEY_USER_CENTER = "user_center";
+    public static final String H5_ENTRY_KEY_UPDATE_PASSWORD = "update_pwd";
+    public static final String H5_ENTRY_KEY_FORGET_PASSWORD = "forget_pwd";
+    public static final String H5_ENTRY_KEY_LOGIN_GAME = "login_game";
+    public static final String H5_ENTRY_KEY_REGISTER = "register";
+    public static final String H5_ENTRY_KEY_ALPHA_CODE = "alpha_code";
+    public static final String H5_ENTRY_KEY_GAME_NOT_OPEN = "game_not_open";
+    public static final String H5_ENTRY_KEY_USER = "user";
+
+    /**
+     * 原生页面id
+     */
+    public static final String NATIVE_PAGE_ID = "nativePageId";
+
+    /**
+     * 跳转的h5界面
+     * 
+     * @param uiBusiness
+     *            ui业务, 参考{@UILoader}的常量定义
+     * @param h5EntryKey
+     *            h5入口key, 参考{@UILoader}的常量定义
+     * @param pageId
+     *            原生页面id, 参考{@NativePageMgr}的常量定义
+     * @param pageTitle
+     */
+    public static void jumpToH5(String h5EntryKey, String uiBusiness, int pageId, String pageTitle) {
+        JSONObject jsonObj = new JSONObject();
+        try {
+            jsonObj.put(UI_BUSINESS, uiBusiness);
+            jsonObj.put(PAGE_ID, pageId);
+            jsonObj.put(PAGE_TITLE, pageTitle);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        CommonService.currentNativeSourcePageInfo = jsonObj;
+        UILoader.enterSdkWebUI(h5EntryKey, uiBusiness);
+    }
+
+    /**
+     * 跳转到原生页面。
+     * 
+     * @param uiBusiness
+     *            ui业务, 参考{@UILoader}的常量定义
+     * @param pageId
+     *            原生页面id, 参考{@NativePageMgr}的常量定义
+     */
+    public static void jumpToNativeUI(int pageId, String uiBusiness) {
+        CommonService.currentNativeSourcePageInfo = null;
+        UILoader.enterSdkNativeUI(pageId, uiBusiness);
+    }
+
+    /**
+     * 尝试跳转到原生页面。
+     * 
+     */
+    public static boolean tryToJumpToNativeUI() {
+        JSONObject jsonObj = CommonService.currentNativeSourcePageInfo;
+        if (jsonObj != null) {
+            int pageId = jsonObj.optInt(PAGE_ID);
+            String uiBusiness = jsonObj.optString(UI_BUSINESS);
+            jumpToNativeUI(pageId, uiBusiness);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 根据ui业务分类进入响应的sdk界面
+     * 
+     * @param uiBusiness
+     *            ui业务, 参考{@UILoader}的常量定义
+     */
+    public static void enterSdkUI(String uiBusiness) {
+        // 登录业务
+        if (UILoader.UI_BUSINESS_LOGIN.equals(uiBusiness)) {
+            UILoader.enterSdkWebUI(UILoader.H5_ENTRY_KEY_LOGIN, uiBusiness);
+            return;
+        }
+
+        // 支付业务
+        if (UILoader.UI_BUSINESS_PAY.equals(uiBusiness)) {
+            UILoader.enterSdkWebUI(UILoader.H5_ENTRY_KEY_PAY, uiBusiness);
+            return;
+        }
+
+        // 个人管理业务
+        if (UILoader.UI_BUSINESS_USER_CENTER.equals(uiBusiness)) {
+            UILoader.enterSdkWebUI(UILoader.H5_ENTRY_KEY_USER_CENTER, uiBusiness);
+            return;
+        }
+
+        UILoader.enterSdkWebUI(uiBusiness, uiBusiness);
+    }
+
+    /**
+     * 根据ui业务分类进入相应的sdk界面,并在对应的url地址后加上哈希和get参数
+     * 
+     * @param h5EntryKey
+     *            要打开的资源节点的名称。
+     * @param hash
+     *            指打开URL时附加的锚点标识，作为URL的一部分。
+     * @param params
+     *            打开URL时需要的GET参数
+     * @param uiBusiness
+     *            业务标识,主要用于输出callback,这个值是可选,可以为空,不是不需的,只针对登录,个人中心的对外API接口
+     */
+    public static void enterSdkUI(String h5EntryKey, String hash, String params, String uiBusiness) {
+        if (StringUtil.isNotEmpty(hash) || StringUtil.isNotEmpty(params)) {
+            Intent intent = new Intent(GlobalVars.context, SdkWebActivity.class);
+            intent.putExtra(UILoader.H5_ENTRY_KEY, h5EntryKey);
+            intent.putExtra(UILoader.UI_BUSINESS, uiBusiness);
+            //增加传递哈希和get参数
+            intent.putExtra(UILoader.UI_HASH, hash);
+            intent.putExtra(UILoader.UI_GETPARAMS, params);
+            intent.putExtra(SdkWebActivity.ACTIVITY_WORK_TYPE, SdkWebActivity.ACTIVITY_WORK_TYPE_WEBVIEW);
+            int flags = Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP;
+            intent.setFlags(flags);
+            GlobalVars.context.startActivity(intent);
+        } else {
+            //优选选用uiBusiness进入页面,如果uiBusiness为空,才选用h5EntryKey进入页面
+            //uiBusiness的可能会有特定API设置的回调,而选用h5EntryKey没有特定API设置的回调执行.
+            if (StringUtil.isNotEmpty(uiBusiness))
+                enterSdkUI(uiBusiness);
+            else
+                enterSdkUI(h5EntryKey);
+        }
+    }
+
+    /**
+     * 根据h5EnTryKey进入相应的sdk界面,并在对应的url地址后加上哈希和get参数, 其中uiBusiness参数为空(为了不会进行特定API设置的回调)
+     * 
+     * @param h5EntryKey
+     * @param hash
+     * @param params
+     */
+    public static void enterSdkUI(String h5EntryKey, String hash, String params) {
+        enterSdkUI(h5EntryKey, hash, params, "");
+    }
+
+    /**
+     * 进入sdk h5
+     * 
+     * @param h5EntryKey
+     *            h5入口key, 参考{@UILoader}的常量定义
+     * @param uiBusiness
+     *            ui业务, 参考{@UILoader}的常量定义
+     * @param notifyCp
+     */
+    private static void enterSdkWebUI(String h5EntryKey, String uiBusiness) {
+        Intent intent = new Intent(GlobalVars.context, SdkWebActivity.class);
+        intent.putExtra(UILoader.H5_ENTRY_KEY, h5EntryKey);
+        intent.putExtra(UILoader.UI_BUSINESS, uiBusiness);
+        intent.putExtra(SdkWebActivity.ACTIVITY_WORK_TYPE, SdkWebActivity.ACTIVITY_WORK_TYPE_WEBVIEW);
+        int flags = Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP;
+        intent.setFlags(flags);
+        GlobalVars.context.startActivity(intent);
+    }
+
+    /**
+     * 进入原生ui界面
+     * 
+     * @param uiBusiness
+     *            ui业务, 参考{@UILoader}的常量定义
+     * 
+     * @param nativePageId
+     *            原生页面id, 参考{@NativePageMgr}的常量定义
+     */
+    private static void enterSdkNativeUI(int nativePageId, String uiBusiness) {
+        Intent intent = new Intent(GlobalVars.context, SdkWebActivity.class);
+        intent.putExtra(UILoader.UI_BUSINESS, uiBusiness);
+        intent.putExtra(NATIVE_PAGE_ID, nativePageId);
+        intent.putExtra(SdkWebActivity.ACTIVITY_WORK_TYPE, SdkWebActivity.ACTIVITY_WORK_TYPE_NATIVE_UI);
+        int flags = Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP;
+        intent.setFlags(flags);
+        GlobalVars.context.startActivity(intent);
+    }
+
+    /**
+     * 固定金额的wap支付
+     * 
+     */
+    public static void enterWapPayHtml() {
+        Intent intent = new Intent(GlobalVars.context, SdkWebActivity.class);
+        intent.putExtra(UILoader.UI_BUSINESS, UILoader.H5_ENTRY_KEY_PAY);
+        intent.putExtra(SdkWebActivity.ACTIVITY_WORK_TYPE, SdkWebActivity.ACTIVITY_WORK_TYPE_WEBVIEW_WAP_PAY);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+        GlobalVars.context.startActivity(intent);
+    }
+}

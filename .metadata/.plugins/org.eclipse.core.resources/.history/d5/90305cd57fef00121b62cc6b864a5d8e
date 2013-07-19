@@ -1,0 +1,23 @@
+package cn.uc.gamesdk.bridge;
+
+import java.io.File;
+
+public class BridgeConfig {
+	/***
+	 * service 配置
+	 * 
+	 * 包含服务名称与对应包名的映射
+	 */
+	public static final String ASSET_PATH_SERIVCE_XML = "ucgamesdk" + File.separator
+			+ "config" + File.separator + "services.xml";
+	
+	/***
+	 * bridge 配置
+	 * 
+	 * 包含bridge集成的浏览器的访问限制配置
+	 */
+	public static final String ASSET_PATH_BRIDGE_XML = "ucgamesdk" + File.separator
+			+ "config" + File.separator + "bridge.xml";
+	
+	
+}

@@ -1,0 +1,17 @@
+package cn.uc.gamesdk.bridge;
+
+import android.util.Log;
+
+/**
+ * Android2.1以下使用
+ * 
+ * webview控制台 
+ * @author chenzh
+ *
+ */
+class Console {
+	public void log(String msg) {
+		msg = msg != null ? msg : "";
+		Log.i("Web Console <2.1", msg);
+	}
+}

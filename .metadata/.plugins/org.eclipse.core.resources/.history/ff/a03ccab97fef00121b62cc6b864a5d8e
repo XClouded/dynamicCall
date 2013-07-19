@@ -1,0 +1,381 @@
+package cn.uc.gamesdk.view.menu;
+
+import java.lang.ref.WeakReference;
+import java.util.HashMap;
+import java.util.List;
+
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.Handler;
+import android.os.Message;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup.LayoutParams;
+import android.widget.LinearLayout;
+import cn.uc.gamesdk.UCCallbackListener;
+import cn.uc.gamesdk.UCGameSDKStatusCode;
+import cn.uc.gamesdk.common.CommonConst;
+import cn.uc.gamesdk.common.GlobalVars;
+import cn.uc.gamesdk.common.UCCallbackListenersSets;
+import cn.uc.gamesdk.controller.MenuCtrl;
+import cn.uc.gamesdk.controller.PlatformCtrl;
+import cn.uc.gamesdk.entity.floatbutton.params.MenuItemActionParams;
+import cn.uc.gamesdk.entity.floatbutton.params.MenuItemParams;
+import cn.uc.gamesdk.entity.floatbutton.params.MenuParams;
+import cn.uc.gamesdk.log.UCLog;
+import cn.uc.gamesdk.view.floatView.UCBubble;
+
+/**
+ * 菜单项的viewcontroller类,处理相对应的逻辑
+ * 
+ * @author liangyc@Ucweb.com
+ * 
+ */
+public abstract class BasicMenuViewCtrl {
+
+    public static final int TAG_ACTION_BUSINESS = 0x320490;
+    public static final int TAG_NOTIFICATION_SERVICE = 0x320492;
+    public static final int TAG_NOTIFICATION_BUSINESS = 0x320496;
+    public static final int ID_BUBBLE = 0x324324;
+
+    public static final int HANDLER_UPDATE_NOTIFICATION_COUNT = 0x234234;
+    public static final int HANDLER_UPDATE_IMAGEVIEW_STATUS = 0x234223;
+
+    private static final String CLASS_NAME = "BasicMenuViewCtrl";
+    protected MenuView _menu;
+    protected HashMap<MenuItemActionParams, MenuItemView> _items = null;
+    protected Context _context;
+    private String _menuType;
+    protected MenuParams _param;
+    private IAfterTouchListener _afterListener;
+
+    /**
+     * 用于封装进入页面的打点字段名称
+     */
+    protected HashMap<String, String> _menuStateLogMap = null;
+
+    /**
+     * item点击时触发相应的动作，实现一级菜单之间的跳转
+     */
+    private OnClickListener _itemClickListener = new OnClickListener() {
+
+        @Override
+        public void onClick(View v) {
+            Object object = v.getTag();
+            //从服务器更新消息数目
+            MenuCtrl.callUpdateMenuRemote("menu", false);
+            if (object != null) {
+                MenuItemParams params = (MenuItemParams) object;
+                //回调CP,通知将要跳转到SDK页面
+                if (needCallbackCP()) {
+                    GlobalVars.isFromFloatMenu = true;//表明是从悬浮菜单进入 liangyc 12-27
+                    UCCallbackListenersSets.callbackSdkListenerResult(UCGameSDKStatusCode.SDK_OPEN, "SdkOpen");
+                }
+                if (_param.getWidth() == android.widget.LinearLayout.LayoutParams.FILL_PARENT)//当宽度为fill_parent布局时才会变换图标
+                {
+                    updateItemStatus(params.getAction());
+                    setCurBiz(params.getAction());
+                }
+                //                try {
+
+                boolean initStatus = PlatformCtrl.initPlatform(params.getAction().getBusiness(), new UCCallbackListener<String>() {
+                    @Override
+                    public void callback(int statuscode, String data) {
+                        //回调CP，页面将要返回主界面,这个无论哪种情况下都是回调 liangyc 2012-12-27
+                        if (GlobalVars.isFromFloatMenu) {
+                            UCCallbackListenersSets.callbackSdkListenerResult(UCGameSDKStatusCode.SDK_CLOSE, "SdkClose");
+                            UCLog.debug(CLASS_NAME, "itemClickListener", "trigger Float button callback,sdk close");
+                        } else {
+                            UCCallbackListenersSets.callbackUserCenterResult(UCGameSDKStatusCode.SUCCESS, "");
+                        }
+                    }
+                });
+                if (initStatus) {
+                    String stateBusiness = _menuStateLogMap.get(params.getAction().getBusiness());
+                    //打印统计日志，记录菜单的点击时间
+                    UCLog.statNoTs(stateBusiness,"","");
+                    PlatformCtrl.enterPlatform(params.getAction().getBusiness(), params.getAction().getHash(), params.getAction().getParams(), params.getTitle());
+                }
+                //                    UCGameSDK.defaultSDK().enterUI(_context, business, new UCCallbackListener<String>() {
+                //                        @Override
+                //                        public void callback(int statuscode, String data) {
+                //                            //回调CP，页面将要返回主界面,这个无论哪种情况下都是回调 liangyc 2012-12-27
+                //                            if(GlobalVars.isFromFloatMenu){
+                //                                UCCallbackListenersSets.callbackSdkListenerResult(UCGameSDKStatusCode.SDK_CLOSE, "SdkClose");
+                //                                UCLog.debug(CLASS_NAME, "itemClickListener", "trigger Float button callback,sdk close");
+                //                            } else {
+                //                                UCCallbackListenersSets.callbackUserCenterResult(UCGameSDKStatusCode.SUCCESS, "");
+                //                            }
+                //                        }
+                //                    });
+                //                } catch (UCCallbackListenerNullException e) {
+                //                    e.printStackTrace();
+                //                }
+                if (_afterListener != null)
+                    _afterListener.callback();
+            }
+        }
+
+
+    };
+
+    private Handler _handler = new WeakRefHandler(this);
+
+    /**
+     * 生成用于绘制菜单项的配置信息,在子类实现
+     * 
+     * @return
+     */
+    protected abstract MenuParams genConfigs();
+
+    protected abstract String getMenuType();
+
+    /**
+     * 获得菜单中每个菜单项点击action与打点key的映射集合
+     * 
+     * @return 返回菜单中每个菜单项点击action与打点key的映射集合
+     */
+    protected abstract HashMap<String, String> getMenuStateLogMap();
+
+    /**
+     * 表明是否需要进行回掉cp
+     * 
+     * @return
+     */
+    protected abstract boolean needCallbackCP();
+
+    public BasicMenuViewCtrl(Context context) {
+        _context = context;
+        _menuType = getMenuType();
+        _menuStateLogMap = getMenuStateLogMap();
+        genViewCtrl();
+        registerReceiver();
+    }
+
+    public MenuView getMenuView() {
+        return _menu;
+    }
+
+    public MenuParams getMenuParams() {
+        return _param;
+    }
+
+    public Handler getHandler() {
+        return _handler;
+    }
+
+    private void genViewCtrl() {
+        _param = genConfigs();
+        _menu = new MenuView(_context, _param);
+        fillUp(_menu, _param.getMenuItems());
+    }
+
+    public void setAfterTouchListener(IAfterTouchListener _afterListener) {
+        this._afterListener = _afterListener;
+    }
+
+    private void fillUp(MenuView _menu2, List<MenuItemParams> menuItems) {
+        _menu2.removeAllViews();
+        if (_param.getWidth() == LayoutParams.WRAP_CONTENT) {//wrap_content下才要设置宽度啊
+            //悬浮菜单
+            _menu2.setWidth(menuItems.size());
+        }
+        _items = new HashMap<MenuItemActionParams, MenuItemView>();
+        //        _items.clear();
+        for (int i = 0; i < menuItems.size(); i++) {
+            MenuItemParams menuParams = menuItems.get(i);
+            MenuItemView item = null;
+
+            if (_param.getWidth() == LayoutParams.FILL_PARENT) {
+                //底部菜单栏
+                item = new MenuItemView(_context, menuParams, menuItems.size());
+            } else {
+                //悬浮框
+                if (i == 0 || i == (menuItems.size() - 1)) {
+                    item = new MenuItemView(_context, menuParams, "float"); //float没有实际用途，只是表示该菜单项位于悬浮菜单的两端
+                } else {
+                    item = new MenuItemView(_context, menuParams);
+                }
+                setMenuViewItemOnTouchListener(item, menuParams);
+            }
+            //处理基本布局
+            item.setOrientation(LinearLayout.VERTICAL);
+            item.setTag(menuParams);
+            item.setOnClickListener(_itemClickListener);
+            if (menuParams.getAction().equals(_menu2.getCurActionParam()))
+                item.setImageViewStatus(true);
+            //处理气泡消息数界面
+            menuParams.getBubbleParams();
+            //            BadgeViewParam badgeViewParam = new BadgeViewParam(badgePosition, cornerRadiusDip, strokeColor, strokeWidth, badgeMarginDip, innerPaddingDip, badgeColor, textColor, textSize, gravity);
+            //            Bubble badge = new Bubble(_context, item.getImageView(), menuParams.getBubbleParams());
+            UCBubble badge = new UCBubble(_context, item.getChildAt(0), menuParams.getBubbleParams());//改用第一个孩子节点,可以更好地显示气泡位置 liangyc
+            badge.setId(ID_BUBBLE);
+            badge.setTag(menuParams.getBubbleParams().getService());
+            int count = MenuCtrl.getMenuNotification(_menuType, menuParams.getBubbleParams().getService());
+            badge.setNumber(count);
+            if (count > 0)
+                badge.show();
+            else
+                badge.hide();
+
+            //添加view
+            item.setOrientation(LinearLayout.VERTICAL);
+            _menu2.addView(item, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+            //添加子项,供以后使用
+            _items.put(menuParams.getAction(), item);
+        }
+
+    }
+
+    /**
+     * 根据business进行图标选中或者未选中状态更改.
+     * 
+     * @param service
+     */
+    public void updateItemStatus(MenuItemActionParams curAction) {
+        if (!_items.containsKey(curAction)) {
+            if (PlatformCtrl.actionParamsAfterLogin != null) {//通过PlatformCtrl的actionParamsAfterLogin获取可能是登录后要跳转的actionParam,并设置改值
+                curAction = PlatformCtrl.actionParamsAfterLogin;
+            }
+        }
+        if (_items.containsKey(curAction)) {//当传入的action值属于当前任意一项的时候,才进行更改
+            MenuItemActionParams preAction = _menu.getCurActionParam();
+            if (preAction != null && !preAction.equals(curAction)) {//点了不同按钮,需要切换状态
+                updateImageViewStatus(preAction, false);
+                updateImageViewStatus(curAction, true);
+            } else {//该business保持选中状态
+                updateImageViewStatus(curAction, true);
+            }
+            if (preAction == null)//第一次进入时,要设置选中的action状态值
+                setCurBiz(curAction);
+        }
+    }
+
+    /**
+     * 更改子菜单项Drawable
+     * 
+     * @param curService
+     * @param b
+     */
+    private void updateImageViewStatus(MenuItemActionParams action, boolean selected) {
+        if (_items.containsKey(action)) {
+            UCLog.debug(CLASS_NAME, "updateImageViewStatus", "contains service item:" + action.toString());
+            MenuItemView item = _items.get(action);
+            if (item != null) {
+                UCLog.debug(CLASS_NAME, "updateImageViewStatus", "set action:" + action.toString() + ",selected:" + selected);
+                item.setImageViewStatus(selected);
+            }
+        }
+    }
+
+    /**
+     * 设置当前菜单项状态
+     * 
+     * @param service
+     */
+    protected void setCurBiz(MenuItemActionParams action) {
+        _menu.setCurActionParam(action);
+    }
+
+    public void updateBubbleStatus(String service) {
+        UCBubble bubble = (UCBubble) _menu.findViewWithTag(service);
+        if (bubble != null) {
+            int count = MenuCtrl.getMenuNotification(_menuType, service);
+            UCLog.debug(CLASS_NAME, "updateBubbleStatus", "menutype:" + _menuType + ",service:" + service + ",count:" + count);
+            bubble.setNumber(count);
+            if (count > 0)
+                bubble.show();
+            else
+                bubble.hide();
+        }
+    }
+
+    /**
+     * 更新所有菜单项气泡
+     */
+    public void updateBubbleStatus() {
+        for (MenuItemParams item : _param.getMenuItems()) {
+            String service = item.getBubbleParams().getService();
+            updateBubbleStatus(service);
+        }
+    }
+
+    /**
+     * 注册广播
+     */
+    private void registerReceiver() {
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(CommonConst.BUBBLE_UPDATE_ACTION);
+        _context.registerReceiver(numberChangeReceiver, filter);
+    }
+
+    /**
+     * number数字变化接收器，设置九游图标上bubble的值
+     */
+    private BroadcastReceiver numberChangeReceiver = new BroadcastReceiver() {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            /**
+             * 更新所有菜单项消息数
+             */
+            updateBubbleStatus();
+        }
+
+    };
+
+    /**
+     * 取消注册广播监听
+     */
+    public void unRegisterBroadcast() {
+        _context.unregisterReceiver(numberChangeReceiver);
+    }
+
+    static class WeakRefHandler extends Handler {
+        private final WeakReference<BasicMenuViewCtrl> _class;
+
+        WeakRefHandler(BasicMenuViewCtrl basicCtrl) {
+            _class = new WeakReference<BasicMenuViewCtrl>(basicCtrl);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            BasicMenuViewCtrl t = _class.get();
+            Object obj = null;
+            if (t != null) {
+                switch (msg.what) {
+                case HANDLER_UPDATE_NOTIFICATION_COUNT:
+                    obj = msg.obj;
+                    if (obj != null) {
+                        String service = (String) obj;
+                        t.updateBubbleStatus(service);
+                    } else {
+                        t.updateBubbleStatus();
+                    }
+                    break;
+                case HANDLER_UPDATE_IMAGEVIEW_STATUS:
+                    obj = msg.obj;
+                    if (obj != null) {
+                        MenuItemActionParams action = (MenuItemActionParams) obj;
+                        t.updateItemStatus(action);
+                    }
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * 为MenuViewItem设置触摸监听器
+     * 
+     * @param item
+     */
+    public void setMenuViewItemOnTouchListener(final MenuItemView item, final MenuItemParams menuParams) {
+
+    }
+}

@@ -1,0 +1,157 @@
+package cn.uc.gamesdk.bridge;
+
+import java.util.Timer;
+import java.util.TimerTask;
+
+import android.content.Context;
+import android.graphics.Color;
+import android.graphics.drawable.ClipDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.GradientDrawable.Orientation;
+import android.graphics.drawable.LayerDrawable;
+import android.util.AttributeSet;
+import android.view.Gravity;
+import android.view.View;
+import android.widget.ProgressBar;
+import cn.uc.gamesdk.common.UCApplication;
+
+/**
+ * bridge的页面加载进度条。
+ * 
+ * 采用{@link Timer}避免闪屏
+ * 
+ * @author chenzh
+ */
+public class BridgeProgressBar extends ProgressBar {
+    private Timer hideTimer = new Timer();
+
+    private Runnable showRunable = new Runnable() {
+        @Override
+        public void run() {
+            BridgeProgressBar.this.setVisibility(View.VISIBLE);
+        }
+    };
+
+    private Runnable hideRunable = new Runnable() {
+        @Override
+        public void run() {
+            BridgeProgressBar.this.setVisibility(View.GONE);
+        }
+    };
+
+    // 隐藏任务
+    private TimerTask lastTimerTask = null;
+
+    private static final int RADIUS = 0;
+
+    public BridgeProgressBar(Context context) {
+        super(context);
+        init();
+    }
+
+    public BridgeProgressBar(Context context, AttributeSet attrs, int defStyle) {
+        super(context, attrs, defStyle);
+        init();
+    }
+
+    public BridgeProgressBar(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        init();
+    }
+
+    public void init() {
+        this.setIndeterminate(false);
+        this.setMinimumHeight(UCApplication.dipToPx(5));
+        this.setProgressDrawable(getDiyProgressDrawable());
+        this.setVisibility(View.GONE);
+    }
+
+    /**
+     * 获取自定义的进度条图片
+     * 
+     * @return
+     */
+    private Drawable getDiyProgressDrawable() {
+        // 进度条背景颜色
+        int colorsBg[] = { Color.parseColor("#ff9d9e9d"), Color.parseColor("#ff5a5d5a"), Color.parseColor("#ff747674") };
+        GradientDrawable backgroundDrawable = new GradientDrawable(Orientation.BOTTOM_TOP, colorsBg);
+        backgroundDrawable.setCornerRadius(UCApplication.dipToPx(RADIUS));
+
+        // 这个是啥意思？
+        int colorsSPD[] = { Color.parseColor("#ff9dbbbb"), Color.parseColor("#ff5abbbb"), Color.parseColor("#ff74bbbb") };
+        GradientDrawable gd = new GradientDrawable(Orientation.BOTTOM_TOP, colorsSPD);
+        gd.setCornerRadius(UCApplication.dipToPx(RADIUS));
+        ClipDrawable secondDaryProgressDrawable = new ClipDrawable(gd, Gravity.LEFT, ClipDrawable.HORIZONTAL);
+
+
+
+        // 进度条颜色
+        int colorsPD[] = { Color.parseColor("#ffffd300"), Color.parseColor("#ffffb600"), Color.parseColor("#ffffcb00") };
+        GradientDrawable gd1 = new GradientDrawable(Orientation.BOTTOM_TOP, colorsPD);
+
+        gd1.setCornerRadius(UCApplication.dipToPx(RADIUS));
+        ClipDrawable progressDrawable = new ClipDrawable(gd1, Gravity.LEFT, ClipDrawable.HORIZONTAL);
+
+        LayerDrawable ld = new LayerDrawable(new Drawable[] { backgroundDrawable, secondDaryProgressDrawable, progressDrawable });
+        ld.setDrawableByLayerId(android.R.id.progress, progressDrawable);
+        ld.setDrawableByLayerId(android.R.id.secondaryProgress, secondDaryProgressDrawable);
+        ld.setDrawableByLayerId(android.R.id.background, backgroundDrawable);
+        return ld;
+    }
+
+
+    /**
+     * 设置进度条进度
+     * 
+     * @proress 0～100
+     */
+    @Override
+    public synchronized void setProgress(int progress) {
+        if (progress >= 0 && progress < 100) {
+            show();
+        } else {
+            this.delayHide(400);
+        }
+        super.setProgress(progress);
+    }
+
+    private void show() {
+        this.post(showRunable);
+    }
+
+    private synchronized void delayHide(int delay) {
+        if (lastTimerTask != null) {
+            lastTimerTask.cancel();
+        }
+        lastTimerTask = new TimerTask() {
+            @Override
+            public void run() {
+                BridgeProgressBar.this.post(BridgeProgressBar.this.hideRunable);
+            }
+        };
+        hideTimer.schedule(lastTimerTask, delay);
+    }
+    
+//    @Override
+//    protected synchronized void onDraw(Canvas canvas) {
+//        super.onDraw(canvas);
+//        
+//        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+//        paint.setColor(Color.BLACK);
+//        
+//        Drawable pd = this.getProgressDrawable();
+//        
+//        float progressPercent = (pd.getLevel() / 10000f);
+//        
+//        int curX = (int) (this.getWidth() * progressPercent);
+//
+//        Rect rect = new Rect(curX - 20, 0, curX, this.getHeight());
+//        canvas.drawRect(rect, paint);
+//        System.out.println("ONdRAWW-----------------------------w" + this.getWidth() + " h:" + this.getHeight() + " level:" + pd.getLevel());
+//        canvas.save();
+//        canvas.translate(0, 0);
+//        canvas.restore();
+//    }
+    
+}

@@ -18,14 +18,13 @@ import dalvik.system.DexClassLoader;
 public class DexLoader implements IDexClassLoader {
 
 	private static Map<String, DexClassPath> dexPathMap = null;
-	private static Map<String, IDispatcher> dexLoaderMap = null;
-
+	
 	private static DexLoader dexLoader = null;// 保存加载dex的对象
 
 	public static DexLoader getInstance() {
 		if (null == dexLoader)
 			dexLoader = new DexLoader();
-
+ 
 		return dexLoader;
 
 	}
@@ -81,7 +80,7 @@ public class DexLoader implements IDexClassLoader {
 	 */
 	private void init() {
 		dexPathMap = new HashMap<String, DexClassPath>();
-		dexLoaderMap = new HashMap<String, IDispatcher>();
+		//dexLoaderMap = new HashMap<String, IDispatcher>();
 
 		DexClassPath core = new DexClassPath();
 		core.classPath = "cn.uc.gamesdk.core.Dispatcher";
@@ -99,7 +98,6 @@ public class DexLoader implements IDexClassLoader {
 
 	public void releaseControl() {
 		dexPathMap = null;
-		dexLoaderMap = null;
 		System.gc();
 	}
 }

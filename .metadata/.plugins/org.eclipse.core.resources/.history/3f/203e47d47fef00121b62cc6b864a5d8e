@@ -1,0 +1,127 @@
+package cn.uc.gamesdk.view;
+
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.widget.Button;
+import cn.uc.gamesdk.util.CommonUtil;
+
+/***
+ * 
+ * 图片按钮。继承自{@Button}。
+ * 
+ * <p>提供设置按下，隐藏，及正常三种按钮状态图片的功能,
+ * 图片的路径是asset目录的路径。</p>
+ * 
+ * 详细使用参考构造函数
+ * 
+ * <br>==========================
+ * <br> 公司：优视科技-游戏中心
+ * <br> 开发：chenzh@ucweb.com
+ * <br> 创建时间：2012-6-13上午10:17:05
+ * <br>==========================
+ */
+
+public class UCImageButton extends Button {
+
+    public static final int ALIGN_BOTTOM = 0;
+    public static final int ALIGN_TOP = 1;
+    public static final int ALIGN_HALF_LEFT = 2;
+    public static final int ALIGN_HALF_TOP = 3;
+    public static final int ALIGN_HALF_LEFT_HALF_TOP = 4;
+    public static final int ALIGN_HALF_LEFT_TOP = 5;
+
+    private int _align = ALIGN_HALF_LEFT_HALF_TOP; //default
+
+    private boolean _enabled;
+
+    private Bitmap _hideBitmap;
+    private Bitmap _normalBitmap;
+    private Bitmap _downBitmap;//
+    private Bitmap _useBitmap;
+
+    /**
+     * 
+     * @param ctx
+     *            {@Activity}
+     * @param hide
+     *            按钮隐藏时的图片的asset目录路径，一般该值为null。
+     * @param normal
+     *            按钮正常时的图片的asset目录路径。
+     * @param down
+     *            按钮按下时的图片的asset目录路径。
+     * @param autoSize
+     *            按钮是否自适应大小
+     */
+    public UCImageButton(Context ctx, String hide, String normal, String down, boolean autoSize) {
+        super(ctx);
+        this._normalBitmap = CommonUtil.createFitScaleBitmap(ctx, normal);
+        this._downBitmap = CommonUtil.createFitScaleBitmap(ctx, down);
+        this._hideBitmap = CommonUtil.createFitScaleBitmap(ctx, hide);
+        this._useBitmap = this._normalBitmap;
+        setBackgroundDrawable(null);
+        if (autoSize && (null != this._normalBitmap) && (null != this._downBitmap)) {
+            setWidth(this._normalBitmap.getWidth() > this._downBitmap.getWidth() ? this._normalBitmap.getWidth() : this._normalBitmap.getWidth());
+            setHeight(this._normalBitmap.getHeight() > this._downBitmap.getHeight() ? this._normalBitmap.getHeight() : this._downBitmap.getHeight());
+        }
+
+    }
+
+    /**
+     * 设置图片的对齐方式
+     * 
+     * @param align
+     *            参考{@UCImageButton}的常量定义
+     */
+    public void setAlign(int align) {
+        this._align = align;
+    }
+
+    public void onTouch(boolean isTouching) {
+        if (isTouching) {
+            this._useBitmap = this._downBitmap;
+        } else {
+            this._useBitmap = this._normalBitmap;
+        }
+        this.invalidate();
+    }
+
+    public void setEnabled(boolean enabled) {
+        _enabled = enabled;
+        if (!_enabled)
+            _useBitmap = this._hideBitmap;
+        else
+            this._useBitmap = this._normalBitmap;
+        super.setEnabled(_enabled);
+        invalidate();
+    }
+
+    public void onDraw(Canvas canvas) {
+        if (this._useBitmap != null) {
+            int i = 0;
+            int j = 0;
+            switch (this._align) {
+            case ALIGN_TOP:
+                break;
+            case ALIGN_BOTTOM:
+                j = getHeight() - this._useBitmap.getHeight();
+                break;
+            case ALIGN_HALF_LEFT:
+                i = getWidth() - this._useBitmap.getWidth() >> 1;
+                break;
+            case ALIGN_HALF_TOP:
+                j = getHeight() - this._useBitmap.getHeight() >> 1;
+                break;
+            case ALIGN_HALF_LEFT_HALF_TOP:
+                i = getWidth() - this._useBitmap.getWidth() >> 1;
+                j = getHeight() - this._useBitmap.getHeight() >> 1;
+                break;
+            case ALIGN_HALF_LEFT_TOP:
+                i = getWidth() - this._useBitmap.getWidth() >> 1;
+                j = getHeight() - this._useBitmap.getHeight();
+            }
+            canvas.drawBitmap(this._useBitmap, i, j, null);
+        }
+        super.onDraw(canvas);
+    }
+}

@@ -1,0 +1,149 @@
+package cn.uc.gamesdk.view.menu;
+
+import android.content.Context;
+import android.graphics.drawable.Drawable;
+import android.util.DisplayMetrics;
+import android.view.Gravity;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import cn.uc.gamesdk.entity.floatbutton.params.MenuItemParams;
+import cn.uc.gamesdk.view.DrawableUtil;
+
+/**
+ * 每个子菜单项view
+ * 
+ * @author liangyc@ucweb.com
+ * 
+ */
+public class MenuItemView extends LinearLayout {
+
+    public static final int ITEM_IMAGE = 0x7f050000;
+    public static final int ITEM_TEXT = 0x7f050001;
+
+    private Context _context;
+    private ImageView _imageView;
+    private TextView _textView;
+    private int _totalItems;//用于当menu的宽度未fill_parent时的子菜单条数,用于平均分配位置.
+    private Drawable _defaultDrawable;
+    private Drawable _selectedBackgroundDrawable;
+    private int _defaultFontColor;   //默认字体颜色
+    private int _selectedFontColor;  //选中时字体颜色
+
+    private LinearLayout _layout;  //测试
+
+    public LinearLayout getLinearLayout() {
+        return _layout;
+    }
+
+    public MenuItemView(Context context, MenuItemParams param) {
+        this(context, param, 0);
+    }
+
+    public MenuItemView(Context context, MenuItemParams param, int totalItems) {
+        super(context);
+        _context = context;
+        _totalItems = totalItems;
+
+        initView(param);
+    }
+
+    //仅仅为最左边或者最右边的菜单准备的，设置边距的图片
+    public MenuItemView(Context context, MenuItemParams param, String catrgory) {
+        super(context);
+        _context = context;
+        //        this.setPadding(16, 0, 16, 0);
+        initView(param);
+        _totalItems = 0;
+    }
+
+    public MenuItemView(Context context) {
+        this(context, new MenuItemParams());
+    }
+
+    private void initView(MenuItemParams param) {
+
+        //设置布局
+        _layout = new LinearLayout(_context);
+        LinearLayout.LayoutParams lLayoutParams = null;
+        lLayoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.FILL_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        _layout.setPadding(DrawableUtil.pxFromDip(param.getMarginLeft()), DrawableUtil.pxFromDip(3), DrawableUtil.pxFromDip(param.getMarginRight()), DrawableUtil.pxFromDip(1));
+        lLayoutParams.gravity = Gravity.CENTER_HORIZONTAL;
+        lLayoutParams.weight = (float) 1.0;
+        if (_totalItems > 0)
+            lLayoutParams.width = DrawableUtil.pxFromDip(60);//有左右margin,显示气泡
+        _layout.setLayoutParams(lLayoutParams);
+        _layout.setOrientation(LinearLayout.VERTICAL);
+
+        //添加选中imageview,默认显示的drawable
+        _imageView = new ImageView(_context);
+        LayoutParams imageLayoutParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        imageLayoutParams.setMargins(0, DrawableUtil.pxFromDip(1), 0, 0);
+        imageLayoutParams.width = DrawableUtil.pxFromDip(30);
+        imageLayoutParams.height = DrawableUtil.pxFromDip(30);
+        imageLayoutParams.gravity = Gravity.CENTER_HORIZONTAL;
+        _imageView.setLayoutParams(imageLayoutParams);
+        _imageView.setId(ITEM_IMAGE);
+        _defaultDrawable = DrawableUtil.getDrawableByFileName(param.getDefaultIcon());
+        _selectedBackgroundDrawable = DrawableUtil.getDrawableByFileName(param.getSelectedBackgroundIcon());
+        _imageView.setImageDrawable(_defaultDrawable);
+        _layout.addView(_imageView);
+
+        //添加textview
+        _textView = new TextView(_context);
+        LayoutParams textLayoutParams = new LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        textLayoutParams.gravity = Gravity.CENTER;
+        _defaultFontColor = param.getDefaultFontColor();
+        _selectedFontColor = param.getSelectedFontColor();
+        _textView.setTextColor(_defaultFontColor);
+        _textView.setSingleLine(true);
+        _textView.setText(param.getTitle());
+        _textView.setLayoutParams(textLayoutParams);
+        _textView.setTextSize(param.getTitleFontSize());
+        _textView.setId(ITEM_TEXT);
+        _layout.addView(_textView);
+
+        this.addView(_layout);
+    }
+
+    public ImageView getImageView() {
+        return _imageView;
+    }
+
+    public TextView getTextView() {
+        return _textView;
+    }
+
+    public void setImageViewStatus(boolean selected) {
+        if (selected) {
+            _textView.setTextColor(_selectedFontColor);
+            this.setBackgroundDrawable(_selectedBackgroundDrawable);
+        } else {
+            _textView.setTextColor(_defaultFontColor);
+            _imageView.setImageDrawable(_defaultDrawable);
+            this.setBackgroundDrawable(null);
+        }
+    }
+
+    /**
+     * 无论竖屏还是横屏,都是取较小的那个值
+     * 
+     * @return
+     */
+    private int getScreenWidth() {
+        DisplayMetrics dm = _context.getResources().getDisplayMetrics();
+        return dm.widthPixels < dm.heightPixels ? dm.widthPixels : dm.heightPixels;
+    }
+
+    /**
+     * 根据总共的item数目设置每个item项的宽度
+     * 
+     * @param piece
+     */
+    public void resetItemWidth(int piece) {
+        if (piece > 0)
+            this.getLayoutParams().width = getScreenWidth() / piece;
+    }
+
+
+}

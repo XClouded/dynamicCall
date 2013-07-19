@@ -1,0 +1,131 @@
+package cn.uc.gamesdk.bridge;
+
+import java.util.ArrayList;
+
+import android.content.Context;
+import android.view.Display;
+import android.widget.RelativeLayout;
+import cn.uc.gamesdk.log.UCLog;
+
+/**
+ * 
+ * !!! WARN: if your app support Orientation Change dynamically. It may work broken.
+ * 
+ * This class is used to detect when the soft keyboard is shown and hidden.
+ * 
+ */
+public class RelativeLayoutSoftKeyboardDetect extends RelativeLayout {
+
+
+    private static final String CLASS_NAME = "SoftKeyboardDetect";
+
+    private int mOldHeight = 0;  // Need to save the old height as not to send redundant events
+    private int mOldWidth = 0; // Need to save old width for orientation change
+    private WebBridge mBridge = null;
+    private int mScreenHeight = 0;
+    private int mScreenWidth = 0;
+
+    /**
+     * 键盘事件对象列表
+     */
+    private ArrayList<KeyboardListener> mkeyboardListenerList = new ArrayList<RelativeLayoutSoftKeyboardDetect.KeyboardListener>();
+
+    public RelativeLayoutSoftKeyboardDetect(Context context) {
+        super(context);
+        mBridge = (WebBridge) context;
+        Display display = mBridge.getWindowManager().getDefaultDisplay();
+        int width = display.getWidth();
+        int height = display.getHeight();
+        mScreenHeight = height;
+        mScreenWidth = width;
+    }
+
+    public synchronized void registerKeyboardListener(KeyboardListener listener) {
+        mkeyboardListenerList.add(listener);
+    }
+
+    @Override
+    /**
+     * Start listening to new measurement events.  Fire events when the height
+     * gets smaller fire a show keyboard event and when height gets bigger fire
+     * a hide keyboard event.
+     *
+     * Note: We are using app.postMessage so that this is more compatible with the API
+     *
+     * @param widthMeasureSpec
+     * @param heightMeasureSpec
+     */
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        UCLog.debug(CLASS_NAME, "onMeasure", "We are in our onMeasure method");
+
+        // Get the current height of the visible part of the screen.
+        // This height will not included the status bar.\
+        int width, height;
+
+        height = MeasureSpec.getSize(heightMeasureSpec);
+        width = MeasureSpec.getSize(widthMeasureSpec);
+        //        UCLog.debug(CLASS_NAME, "onMeasure", "Old Height = " + oldHeight);
+        //        UCLog.debug(CLASS_NAME, "onMeasure", "Width = " + width);
+        //        UCLog.debug(CLASS_NAME, "onMeasure", "Old Width = " + oldWidth);
+        //        UCLog.debug(CLASS_NAME, "onMeasure", "Height = " + height);
+
+        // If the oldHeight = 0 then this is the first measure event as the app starts up.
+        // If oldHeight == height then we got a measurement change that doesn't affect us.
+        if (mOldHeight == 0 || mOldHeight == height) {
+            //            LOG.d(CLASS_NAME, "Ignore this event");
+        } else if (mScreenHeight == width) {
+            int tmp_var = mScreenHeight;
+            mScreenHeight = mScreenWidth;
+            mScreenWidth = tmp_var;
+            UCLog.debug(CLASS_NAME, "onMeasure", "orientation change");
+        }
+        // If the height as gotten bigger then we will assume the soft keyboard has
+        // gone away.
+        else if (height > mOldHeight) {
+            if (mBridge != null) {
+                mBridge.sendJavascript("javascript:try{bridge.fireDocumentEvent('hidekeyboard'); }catch(e){console.log(e);};");
+                for (KeyboardListener listener : mkeyboardListenerList) {
+                    listener.onKeyboardHide();
+                }
+            }
+        }
+        // If the height as gotten smaller then we will assume the soft keyboard has 
+        // been displayed.
+        else if (height < mOldHeight) {
+            if (mBridge != null) {
+                mBridge.sendJavascript("javascript:try{bridge.fireDocumentEvent('showkeyboard'); }catch(e){console.log(e);};");
+                for (KeyboardListener listener : mkeyboardListenerList) {
+                    listener.onKeyboardShow();
+                }
+            }
+
+        }
+
+        // Update the old height for the next event
+        mOldHeight = height;
+        mOldWidth = width;
+    }
+    
+    @Override
+    protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
+        UCLog.debug(CLASS_NAME, "onSizeChanged", "We are in our onSizeChanged method");
+        super.onSizeChanged(width, height, oldWidth, oldHeight);
+    }
+
+    /**
+     * 键盘监听器
+     * 
+     * <br>==========================
+     * <br> author：Zenip
+     * <br> email：lxyczh@gmail.com
+     * <br> create：2012-12-25上午11:07:14
+     * <br>==========================
+     */
+    public static interface KeyboardListener {
+        void onKeyboardShow();
+
+        void onKeyboardHide();
+    }
+
+}

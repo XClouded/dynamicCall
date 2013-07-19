@@ -1,0 +1,53 @@
+package cn.uc.gamesdk.view.graphics;
+
+import android.graphics.CornerPathEffect;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.drawable.ShapeDrawable;
+import android.graphics.drawable.shapes.PathShape;
+
+public class UCBackBtnDrawable {
+
+    private ShapeDrawable _backBtnBackground;
+    //private int _width, _height;
+
+    public UCBackBtnDrawable(int width, int height, int bgColor, int borderColor) {
+        Path path = genBackBtnPathShape(width, height);
+        _backBtnBackground = new ShapeDrawable(new PathShape(path, width, height));
+        _backBtnBackground.getPaint().set(genPaint(bgColor, borderColor));
+        _backBtnBackground.invalidateSelf();
+    }
+
+
+    public ShapeDrawable getBackBtnBackgound() {
+        return _backBtnBackground;
+    }
+
+
+    /**
+     * 生成后退按钮路径
+     * 
+     * @param width
+     * @param height
+     * @return
+     */
+    private Path genBackBtnPathShape(float width, float height) {
+        Path path = new Path();
+        path.moveTo(0, (int) (height / 2));
+        path.lineTo((int) (width * 2 / 9), (int) height);
+        path.lineTo((int) width, (int) height);
+        path.lineTo((int) width, 0);
+        path.lineTo((int) (width * 2 / 9), 0);
+        path.close();
+        return path;
+    }
+
+
+    private Paint genPaint(int bgColor, int borderColor) {
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setPathEffect(new CornerPathEffect(5));
+        paint.setStrokeWidth(1);
+        paint.setColor(bgColor);
+        return paint;
+    }
+}

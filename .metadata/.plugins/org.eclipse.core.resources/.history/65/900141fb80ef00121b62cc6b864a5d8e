@@ -1,0 +1,86 @@
+package cn.uc.gamesdk.bridge;
+
+import java.io.IOException;
+import java.io.InputStream;
+
+import cn.uc.gamesdk.log.UCLog;
+
+import android.annotation.TargetApi;
+import android.content.res.AssetManager;
+import android.net.Uri;
+import android.webkit.WebResourceResponse;
+import android.webkit.WebView;
+
+/**
+ * 用于解决Android3.x以上访问asset目录下的网页时，无法处理hash与url参数的问题<br/>
+ * 
+ * 
+ * 问题场景描述：<br/>
+ * 在没有引入该类时，Android3.x以上的webview在进行以下调用时，将报错。<br/>
+ * 1 url参数 loadUrl("file:///android_asset/index.html?urlParam1=test")<br/>
+ * 2 url哈希 loadUrl("file:///android_asset/index.html#!login")<br/>
+ * 
+ * 原因分析：<br/>
+ * Android3.x以上的webview的loadUrl接口，对file:///android_asset/的资源没有正确的解析。<br/>
+ * 
+ * 解决方法：<br/>
+ * android apache cordova的开发者利用了本类，<br/>
+ * 
+ * @author chenzh
+ */
+@TargetApi(11)
+public class BridgeWebViewClient11 extends BridgeWebViewClient {
+
+    private static final String CLASS_NAME = "BridgeWebViewClient11";
+
+    public BridgeWebViewClient11(WebBridge ctx) {
+        super(ctx);
+    }
+
+    /**
+     * 拦截weburl请求
+     */
+    @Override
+    public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
+        if (url.contains("?") || url.contains("#")) {
+            return generateWebResourceResponse(url);
+        } else {
+            return super.shouldInterceptRequest(view, url);
+        }
+    }
+
+    /**
+     * 解析url，构造正确的响应。
+     * 
+     * @param url
+     * @return
+     */
+    private WebResourceResponse generateWebResourceResponse(String url) {
+        final String ANDROID_ASSET = "file:///android_asset/";
+        if (url.startsWith(ANDROID_ASSET)) {
+            String niceUrl = url;
+            niceUrl = url.replaceFirst(ANDROID_ASSET, "");
+            if (niceUrl.contains("?")) {
+                niceUrl = niceUrl.split("\\?")[0];
+            } else if (niceUrl.contains("#")) {
+                niceUrl = niceUrl.split("#")[0];
+            }
+
+            String mimetype = null;
+            if (niceUrl.endsWith(".html")) {
+                mimetype = "text/html";
+            }
+            try {
+                AssetManager assets = ctx.getAssets();
+                Uri uri = Uri.parse(niceUrl);
+                InputStream stream = assets.open(uri.getPath(), AssetManager.ACCESS_STREAMING);
+                WebResourceResponse response = new WebResourceResponse(mimetype, "UTF-8", stream);
+                return response;
+            } catch (IOException e) {
+                UCLog.warn(CLASS_NAME, "generateWebResourceResponse", e.getMessage());
+            }
+        }
+        return null;
+    }
+
+}

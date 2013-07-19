@@ -1,0 +1,175 @@
+package cn.uc.gamesdk.view.floatView;
+
+import android.content.Context;
+import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.util.AttributeSet;
+import android.util.Log;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewGroup.LayoutParams;
+import android.view.ViewParent;
+import android.widget.FrameLayout;
+import android.widget.TextView;
+import cn.uc.gamesdk.entity.floatbutton.params.BubbleParams;
+import cn.uc.gamesdk.view.DrawableUtil;
+
+
+public class UCBubble extends TextView{
+    
+    public static final String CLASS_NAME = "UCBubble";
+ 
+    //设置不可配属性的值
+    private static final int DEFAULT_GRAVITY = Gravity.CENTER; 
+    private static final int DEFAULT_STROKE_WIDTH = 1;//边框边宽度     
+    private static final int DEFAULT_BADGE_MARGIN_DIP = 0;//外边距
+    private static final int DEFAULT_INNER_PADDING_DIP = 3; //textView中文字与控件之间的距离
+    private static final int DEFAULT_CORNER_RADIUS_DIP = 3; //默认圆角半径的大小
+    
+    private View _target; //目标附加对象
+    private BubbleParams _bubbleParams = null;//存储设置信息,用于初始化显示样式等信息
+    private Drawable _badgeBg;   //背景图标
+    private Context _context;      
+    
+    /**
+     * 气泡的默认构造函数
+     * @param context
+     */
+    public UCBubble(Context context) {
+        super(context);
+    }
+    
+    /**
+     * 气泡构造函数
+     * @param context
+     * @param target
+     * @param bubbleParams
+     */
+    public UCBubble(Context context, View target, BubbleParams bubbleParams) {
+        this(context, null, android.R.attr.textViewStyle, target, bubbleParams);
+    }
+    /**
+     * 气泡构造参数
+     * @param context
+     * @param attrs
+     * @param defStyle
+     * @param target
+     * @param bubbleParams
+     */
+    public UCBubble(Context context, AttributeSet attrs, int defStyle, View target, BubbleParams bubbleParams) {
+        super(context, attrs, defStyle);
+        this._context = context;
+        this._target = target;
+        if (bubbleParams == null)
+            this._bubbleParams = new BubbleParams(BubbleParams.DEFAULT_BORDER_COLOR, BubbleParams.DEFAULT_BACKGROUND_COLOR,
+                    BubbleParams.DEFAULT_TEXT_COLOR, BubbleParams.DEFAULT_TEXT_SIZE, "");
+        else
+            this._bubbleParams = bubbleParams;
+        initView();
+    }
+
+    /**
+     * 设置控件的的属性
+     */
+    private void initView() {
+
+        setTypeface(Typeface.DEFAULT_BOLD); //设置字体加粗  
+        setTextSize(_bubbleParams.getTextSize()); //设置字体大小
+        setTextColor(_bubbleParams.getTextColor()); //设置字体颜色
+        setGravity(DEFAULT_GRAVITY);  //设置字体对齐方式
+       
+        int paddingPixels = DrawableUtil.pxFromDip(DEFAULT_INNER_PADDING_DIP);
+        setPadding(paddingPixels, 0, paddingPixels, 0); //设置内边距
+
+        if (this._target != null) {
+            applyTo(this._target);
+        }
+
+    }
+    /**
+     * 附加，将buddle附加到目标view上
+     * @param target
+     */
+    private void applyTo(View target) {
+
+        LayoutParams layputPrarms = target.getLayoutParams();
+        ViewParent parent = target.getParent();
+        FrameLayout container = new FrameLayout(_context);
+        ViewGroup group = (ViewGroup) parent;
+        int index = group.indexOfChild(target);
+        group.removeView(target);
+        group.addView(container, index, layputPrarms);
+        container.addView(target);
+        this.setVisibility(View.GONE);
+        container.addView(this);
+
+        group.invalidate();
+    }
+    
+    /**
+     * 将气泡提示显示出来
+     */
+    public void show() {
+        if (getBackground() == null) {
+            if (_badgeBg == null) {
+                _badgeBg = getDefaultBackground();
+            }
+            setBackgroundDrawable(_badgeBg);
+        }
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        int badgeMargin = DrawableUtil.pxFromDip(DEFAULT_BADGE_MARGIN_DIP);
+        lp.gravity = Gravity.RIGHT | Gravity.TOP;
+        lp.setMargins(0, badgeMargin, badgeMargin, 0);
+        setLayoutParams(lp);
+        
+        this.setVisibility(View.VISIBLE);
+    }
+    
+    /**
+     * 将气泡提示隐藏
+     */
+    public void hide() {
+        this.setVisibility(View.GONE);
+    }
+    
+    /**
+     * 绘制背景图片
+     * @return
+     */
+    private Drawable getDefaultBackground() {
+        
+        int strokeWidth = DrawableUtil.pxFromDip(DEFAULT_STROKE_WIDTH);
+        int radius = DrawableUtil.pxFromDip(DEFAULT_CORNER_RADIUS_DIP);
+
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setStroke(strokeWidth, _bubbleParams.getBorderColor()); //设置边框颜色
+        drawable.setColor(_bubbleParams.getBackgroundColor()); //背景色
+        drawable.setCornerRadius(radius); //圆角
+
+        return drawable;
+    }
+    
+    /**
+     * 设置Number
+     * @param number
+     */
+    public void setNumber(int number){
+        if(number > 99){
+            this.setText("N");
+        }else if(number > 0){
+            setText(number+"");
+        }else{
+           Log.d(CLASS_NAME, "setNumber,number <= 0");
+        }
+    }
+    
+    /**
+     * 获取显示的Number
+     * @return
+     */
+    public String getNumberStr() {
+        return this.getText().toString();
+    }
+}

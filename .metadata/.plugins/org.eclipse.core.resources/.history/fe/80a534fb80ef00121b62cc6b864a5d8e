@@ -1,0 +1,21 @@
+package cn.uc.gamesdk.bridge;
+
+import cn.uc.gamesdk.log.UCLog;
+import android.annotation.TargetApi;
+import android.content.Context;
+import android.webkit.WebStorage;
+
+
+public class BridgeChromeClient7 extends BridgeChromeClient {
+
+    public BridgeChromeClient7(Context ctx) {
+        super(ctx);
+    }
+
+    @TargetApi(5)
+    @Override
+    public void onReachedMaxAppCacheSize(long spaceNeeded, long totalUsedQuota, WebStorage.QuotaUpdater quotaUpdater) {
+        UCLog.debug("BridgeChromeClient7", "onReachedMaxAppCacheSize", "spaceNeeded = " + spaceNeeded + "; totalUsedQuota = " + totalUsedQuota);
+        quotaUpdater.updateQuota(spaceNeeded * 2);
+    }
+}

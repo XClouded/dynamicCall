@@ -1,0 +1,98 @@
+package cn.uc.gamesdk.view.floatView;
+
+import android.content.Context;
+import android.graphics.drawable.Drawable;
+import android.widget.ImageButton;
+import cn.uc.gamesdk.entity.floatbutton.params.FloatButtonParams;
+import cn.uc.gamesdk.view.DrawableUtil;
+
+/**
+ * 
+ * 悬浮按钮
+ * 
+ * @author chenbl@ucweb.com
+ * 
+ * @version 2012-12-28
+ */
+public class UCFloatButton extends ImageButton {
+
+
+    private UCBubble _bubble = null; //气泡
+
+    private Drawable defaultDrwable = null;      //包含默认图片及默认点击效果图片的Drawable  
+    private Drawable expandedDrawable = null;    //包含展开时图片及展开时点击效果图片的Drawable
+
+    public UCFloatButton(Context context, FloatButtonParams floatButtonParams) {
+        super(context);
+        
+        setDefalutDrawable(floatButtonParams.getDefaultIcon(), floatButtonParams.getSelectedIcon());
+        setExpandedDrawable(floatButtonParams.getExpandedIcon(), floatButtonParams.getSelectedExpandedIcon());
+
+        setDefaultDrwable(); //设置默认点击图片
+    }
+
+    /**
+     * 设置默认的点击效果
+     * 
+     * @param defaultIcon
+     * @param selectedIcon
+     */
+    private void setDefalutDrawable(String defaultIcon, String selectedIcon) {
+        defaultDrwable  = DrawableUtil.getDrawableByFileName(defaultIcon);
+    }
+
+    /**
+     * 设置默认的图片
+     */
+    public void setDefaultDrwable() {
+        setBackgroundDrawable(defaultDrwable);
+    }
+
+    /**
+     * 设置展开时九游按钮的点击效果
+     * 
+     * @param expandedIcon
+     * @param selectedExpandedIcon
+     */
+    private void setExpandedDrawable(String expandedIcon, String selectedExpandedIcon) {
+        expandedDrawable = DrawableUtil.getDrawableByFileName(expandedIcon);
+    }
+
+    /**
+     * 设置展开式的图片
+     */
+    public void setExpandedDrawable() {
+        setBackgroundDrawable(expandedDrawable);
+    }
+
+    /**
+     * 设置气泡对象
+     * 
+     * @param bubbleParams
+     */
+    public void setBubble(UCBubble bubble) {
+        _bubble = bubble;
+    }
+
+    /**
+     * 隐藏气泡对象
+     */
+    public void hideBubble() {
+        _bubble.hide();
+    }
+
+    /**
+     * 显示气泡对象
+     */
+    public void showBubble() {
+        if (_bubble.getNumberStr() != null && _bubble.getNumberStr().length() > 0)
+            _bubble.show();
+    }
+
+    /**
+     * 设置气泡上面数字显示数目
+     */
+    public void setBubbleNumber(int number) {
+        _bubble.setNumber(number);
+    }
+}

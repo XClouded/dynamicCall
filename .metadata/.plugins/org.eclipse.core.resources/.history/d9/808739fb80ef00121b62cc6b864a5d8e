@@ -1,0 +1,158 @@
+package cn.uc.gamesdk.bridge;
+
+import java.util.HashMap;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.os.Message;
+import android.view.View;
+import android.webkit.JsPromptResult;
+import android.webkit.WebChromeClient;
+import android.webkit.WebView;
+import android.widget.EditText;
+import cn.uc.gamesdk.log.UCLog;
+import cn.uc.gamesdk.util.StringUtil;
+
+/**
+ * webview的ui代理
+ * 拦截js的弹出窗口事件
+ * 
+ * @author chenzh
+ */
+public class BridgeChromeClient extends WebChromeClient {
+
+    public static final String CLASS_NAME = "BridgeChromeClient";
+
+    private WebBridge ctx;
+
+
+    public BridgeChromeClient(Context ctx) {
+        this.ctx = (WebBridge) ctx;
+    }
+
+    /**
+     * 缓存处理wml跳转的url，跳转后不再做跳转。
+     */
+    private HashMap<String, Integer> gapWmlUrlMap = null;
+
+    /**
+     * Tell the client to display a prompt dialog to the user. If the client
+     * returns true, WebView will assume that the client will handle the prompt
+     * dialog and call the appropriate JsPromptResult method.
+     * 
+     * Since we are hacking prompts for our own purposes, we should not be using
+     * them for this purpose, perhaps we should hack console.log to do this
+     * instead!
+     * 
+     * @param webView
+     * @param url
+     * @param message
+     * @param defaultValue
+     * @param result
+     */
+    @Override
+    public boolean onJsPrompt(WebView webView, String url, String message, String defaultValue, JsPromptResult result) {
+        if (defaultValue != null && defaultValue.length() > 3 && defaultValue.substring(0, 4).equals("gap:")) {
+            JSONArray array;
+            try {
+                array = new JSONArray(defaultValue.substring(4));
+                String service = array.getString(0);
+                String action = array.getString(1);
+                String callbackId = array.getString(2);
+                boolean async = array.getBoolean(3);
+                String r = ctx.serviceManager.exec(service, action, callbackId, message, async);
+                result.confirm(r);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+
+        // Polling for JavaScript messages
+        else if (defaultValue != null && defaultValue.equals("gap_poll:")) {
+            String r = ctx.callbackServer.getJavascript();
+            result.confirm(r);
+        }
+
+        // Bridge JS has initialized, so show webview
+        // (This solves white flash seen when rendering HTML)
+        else if (defaultValue != null && defaultValue.equals("gap_init:")) {
+            if (!StringUtil.isNullOrEmpty(message)) {
+                try {
+                    ctx.onReceiveJsBridgeConfig(new JSONObject(message));
+                } catch (JSONException e) {
+//                    UCLog.warn(BridgeChromeClient.CLASS_NAME, "onJsPrompt", "页面bridgeConfig不是json对象, bridgeConfig=" + message);
+                }
+            }
+
+            if (webView != null) {
+                webView.setVisibility(View.VISIBLE);
+            }
+            ctx.spinnerStop();
+            result.confirm("OK");
+        }
+
+        else if (defaultValue != null && defaultValue.equals("gap_wml:") && webView != null) {
+            if(url == null){ url = "wml_hack_url";};
+            if (gapWmlUrlMap == null) {
+                gapWmlUrlMap = new HashMap<String, Integer>();
+//                    UCLog.debug(CLASS_NAME, "onJsPrompt", "gap_wml: url = " + url);
+                    gapWmlUrlMap.put(url, 0);
+                    webView.reload();
+            } else if (gapWmlUrlMap.containsKey(url)) {
+                int count = gapWmlUrlMap.get(url);
+                if(count < 3){
+//                    UCLog.debug(CLASS_NAME, "onJsPrompt", "gap_wml: url = " + url);
+                    gapWmlUrlMap.put(url, count + 1);
+                    webView.reload();
+                }
+            } else{
+                gapWmlUrlMap.put(url, 0);
+                webView.reload();
+                
+            }
+            result.confirm("OK");
+        }
+
+        // Show dialog
+        else {
+            final JsPromptResult res = result;
+            AlertDialog.Builder dlg = new AlertDialog.Builder(this.ctx);
+            dlg.setMessage(message);
+            final EditText input = new EditText(this.ctx);
+            if (defaultValue != null) {
+                input.setText(defaultValue);
+            }
+            dlg.setView(input);
+            dlg.setCancelable(false);
+            dlg.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int which) {
+                    String usertext = input.getText().toString();
+                    res.confirm(usertext);
+                }
+            });
+            dlg.setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int which) {
+                    res.cancel();
+                }
+            });
+            dlg.create();
+            dlg.show();
+        }
+        return true;
+    }
+
+    // webview 加载进度
+    @Override
+    public void onProgressChanged(WebView view, int newProgress) {
+        Message msg = Message.obtain();
+        msg.what = WebBridge.PROGRESS_UPDATE;
+        msg.obj = newProgress;
+        this.ctx.mHandler.sendMessage(msg);
+        super.onProgressChanged(view, newProgress);
+    }
+}

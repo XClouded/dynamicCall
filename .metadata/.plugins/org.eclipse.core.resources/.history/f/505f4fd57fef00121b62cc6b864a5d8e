@@ -1,0 +1,102 @@
+package cn.uc.gamesdk.bridge.api;
+
+import android.webkit.WebView;
+
+/**
+ * This class represents a service entry object.
+ */
+public class ServiceEntry {
+
+    /**
+     * The name of the service that this service implements
+     */
+    public String serviceName = "";
+
+    /**
+     * The service class name that implements the service.
+     */
+    public String serviceClass = "";
+
+    /**
+     * The service object.
+     * Service objects are only created when they are called from JavaScript. (see ServiceManager.exec)
+     * The exception is if the onload flag is set, then they are created when ServiceManager is initialized.
+     */
+    public IService service = null;
+
+    /**
+     * Flag that indicates the service object should be created when ServiceManager is initialized.
+     */
+    public boolean onload = false;
+
+    /**
+     * Constructor
+     * 
+     * @param service
+     *            The name of the service
+     * @param serviceClass
+     *            The service class name
+     * @param onload
+     *            Create service object when HTML page is loaded
+     */
+    public ServiceEntry(String service, String serviceClass, boolean onload) {
+        this.serviceName = service;
+        this.serviceClass = serviceClass;
+        this.onload = onload;
+    }
+
+    /**
+     * Create service object.
+     * If service is already created, then just return it.
+     * 
+     * @return The service object
+     */
+    public IService createService(WebView webView, BridgeInterface ctx) {
+        if (this.service != null) {
+            return this.service;
+        }
+        try {
+            Class<?> c = getClassByName(this.serviceClass);
+            if (isBridgeService(c)) {
+                this.service = (IService) c.newInstance();
+                this.service.setContext(ctx);
+                this.service.setView(webView);
+                return service;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Error adding service " + this.serviceClass + ".");
+        }
+        return null;
+    }
+
+    /**
+     * Get the class.
+     * 
+     * @param clazz
+     * @return
+     * @throws ClassNotFoundException
+     */
+    private Class<?> getClassByName(final String clazz) throws ClassNotFoundException {
+        Class<?> c = null;
+        if (clazz != null) {
+            c = Class.forName(clazz);
+        }
+        return c;
+    }
+
+    /**
+     * Get the interfaces that a class implements and see if it implements the
+     * cn.uc.bridge.api.Service interface.
+     * 
+     * @param c
+     *            The class to check the interfaces of.
+     * @return Boolean indicating if the class implements cn.uc.bridge.api.Service
+     */
+    private boolean isBridgeService(Class<?> c) {
+        if (c != null) {
+            return cn.uc.gamesdk.bridge.api.Service.class.isAssignableFrom(c) || cn.uc.gamesdk.bridge.api.IService.class.isAssignableFrom(c);
+        }
+        return false;
+    }
+}

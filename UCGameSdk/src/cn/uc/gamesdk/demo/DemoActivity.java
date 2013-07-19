@@ -28,6 +28,7 @@ public class DemoActivity extends Activity implements OnClickListener {
 
 	private TextView tvMessage = null;
 
+	
 	protected void onCreate(Bundle bundle) {
 		super.onCreate(bundle);
 		setContentView(R.layout.activity_dex_loader);
@@ -41,27 +42,28 @@ public class DemoActivity extends Activity implements OnClickListener {
 		btnActivity = (Button) findViewById(R.id.btn_activity);
 
 		btnRelease.setOnClickListener(this);
-		btnInit.setOnClickListener(this);
+		btnInit.setOnClickListener(this); 
 		btnLogin.setOnClickListener(this);
 		btnActivity.setOnClickListener(this);
 
 		tvMessage = (TextView) findViewById(R.id.textView3);
 
-	}
+	} 
 
-	@Override
-	public void onClick(View view) {
-		if (view == btnRelease) {
+	@Override  
+	public void onClick(View view) {  
+		if (view == btnRelease) {  
 			tvMessage.setText("");
 
-			DexLoader.getInstance().releaseControl();
+			DexLoader.getInstance().releaseControl(); 
 			ReleaseJar.releaseJar();
 		} else if (view == btnClear) {
 			tvMessage.setText("");
-		} else if (view == btnActivity) {
+		} else if (view == btnActivity) { 
 			startActivity(new Intent(this, ContainerActivity.class));
-		} else if (view == btnInit) {
-
+		} else if (view == btnInit) {  
+			//初始化DexLoader，包括配置及依赖注入等 
+			
 		} else if (view == btnLogin) {
 			IDispatcher classDispatcher = DexLoader.getInstance().Creator(
 					CApi.API_LOGIN);
@@ -74,7 +76,6 @@ public class DemoActivity extends Activity implements OnClickListener {
 								Log.d(CLASS_NAME, "callback from dex:" + data);
 								tvMessage.append("callback from dex:" + data
 										+ "\n");
-
 							}
 
 						}, new Object[] { String.valueOf(System

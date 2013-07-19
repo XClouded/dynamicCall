@@ -1,0 +1,61 @@
+package cn.uc.gamesdk.bridge;
+
+import java.util.LinkedList;
+
+
+public class CallbackServer {
+
+    @SuppressWarnings("unused")
+    private static final String CLASS_NAME = "CallbackServer";
+
+    /**
+     * The list of JavaScript statements to be sent to JavaScript.
+     */
+    private LinkedList<String> javascript;
+
+
+    /**
+     * Constructor.
+     */
+    public CallbackServer() {
+        this.javascript = new LinkedList<String>();
+    }
+
+    /**
+     * Get the number of JavaScript statements.
+     * 
+     * @return int
+     */
+    public int getSize() {
+        synchronized (this) {
+            int size = this.javascript.size();
+            return size;
+        }
+    }
+
+    /**
+     * Get the next JavaScript statement and remove from list.
+     *  
+     * @return String
+     */
+    public String getJavascript() {
+        synchronized (this) {
+            if (this.javascript.size() == 0) {
+                return null;
+            }
+            String statement = this.javascript.remove(0);
+            return statement;
+        }
+    }
+
+    /**
+     * Add a JavaScript statement to the list.
+     * 
+     * @param statement
+     */
+    public void sendJavascript(String statement) {
+        synchronized (this) {
+            this.javascript.add(statement);
+        }
+    }
+}

@@ -1,0 +1,130 @@
+package cn.uc.gamesdk.view;
+
+import android.content.Context;
+import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.util.AttributeSet;
+import android.view.Gravity;
+import android.view.View;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.RelativeLayout;
+import cn.uc.gamesdk.common.UCApplication;
+import cn.uc.gamesdk.util.CommonUtil;
+
+/**
+ * 生成带删除按钮的edittext控件
+ * 
+ * @author liangyc@ucweb.com
+ *         <br>Create: Aug 28, 2012
+ * 
+ */
+public class UCEditTextWithDelBtn extends RelativeLayout {
+
+    private static BitmapDrawable delDrawable;
+    private ImageView _delBtn;
+    private EditText _inputEt;
+    private int _editTextId;
+
+    public UCEditTextWithDelBtn(Context context, int edId) {
+        super(context);
+        _editTextId = edId;
+        init();
+        bindAction();
+    }
+
+    public UCEditTextWithDelBtn(Context context, AttributeSet attrs, int defStyle, int edId) {
+        super(context, attrs, defStyle);
+        _editTextId = edId;
+        init();
+        bindAction();
+    }
+
+    public UCEditTextWithDelBtn(Context context, AttributeSet attrs, int edId) {
+        super(context, attrs);
+        _editTextId = edId;
+        init();
+        bindAction();
+    }
+
+    
+    /**
+     * 初始化控件界面
+     */
+    private void init() {
+        
+        if (delDrawable == null)
+            delDrawable = CommonUtil.createFitScaleBitmapDrawable(getContext(), "ucgamesdk/images/uc_delete.png");
+        
+        //初始化edittext
+        _inputEt = new EditText(getContext());
+        
+        RelativeLayout.LayoutParams lpInputEt = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.FILL_PARENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+        lpInputEt.setMargins(0, 0, 0, 0);
+        lpInputEt.addRule(RelativeLayout.ALIGN_PARENT_LEFT, RelativeLayout.TRUE);
+        lpInputEt.addRule(RelativeLayout.CENTER_IN_PARENT, RelativeLayout.TRUE);
+        _inputEt.setGravity(Gravity.CENTER_VERTICAL);
+        _inputEt.setLayoutParams(lpInputEt);
+        _inputEt.setId(_editTextId);
+        _inputEt.setBackgroundColor(Color.TRANSPARENT); // 如果设置成颜色，会存在隐藏父视图得bug
+
+        //初始化删除按钮
+        _delBtn = new ImageView(getContext());
+        RelativeLayout.LayoutParams lpIV = new RelativeLayout.LayoutParams(UCApplication.dipToPx(24), UCApplication.dipToPx(24));
+        lpInputEt.setMargins(0, 0, 0, 0);
+        lpIV.addRule(RelativeLayout.CENTER_IN_PARENT, RelativeLayout.TRUE);
+        lpIV.addRule(RelativeLayout.ALIGN_RIGHT, _editTextId);
+        _delBtn.setLayoutParams(lpIV);
+        _delBtn.setBackgroundDrawable(delDrawable);
+
+        //添加到根layout
+        this.addView(_inputEt);
+        this.addView(_delBtn);
+    }
+
+    /**
+     * 绑定图片按钮事件
+     */
+    private void bindAction() {
+        if (_inputEt != null && _delBtn != null) {
+            _delBtn.setOnClickListener(new OnClickListener() {
+
+                @Override
+                public void onClick(View v) {
+                    _inputEt.setText("");
+                }
+            });
+            _delBtn.setVisibility(View.GONE);
+
+            _inputEt.addTextChangedListener(new TextWatcher() {
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    if (count > 0)
+                        _delBtn.setVisibility(View.VISIBLE);
+                    else
+                        _delBtn.setVisibility(View.GONE);
+                }
+
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    if (s.toString().length() > 0)
+                        _delBtn.setVisibility(View.VISIBLE);
+                    else
+                        _delBtn.setVisibility(View.GONE);
+                }
+            });
+        }
+    }
+
+    public EditText getEditText() {
+        return _inputEt;
+    }
+
+}

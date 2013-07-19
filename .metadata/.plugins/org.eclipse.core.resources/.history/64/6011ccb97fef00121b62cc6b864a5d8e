@@ -1,0 +1,661 @@
+package cn.uc.gamesdk.view.loginwidget.ctrl;
+
+import java.util.ArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import android.app.Activity;
+import android.os.Handler;
+import android.os.Handler.Callback;
+import android.os.Looper;
+import android.os.Message;
+import android.view.Gravity;
+import android.view.KeyEvent;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.View.OnKeyListener;
+import android.view.WindowManager;
+import android.widget.Toast;
+import cn.uc.gamesdk.UCGameSDKStatusCode;
+import cn.uc.gamesdk.common.GlobalVars;
+import cn.uc.gamesdk.common.UCCallbackListenersSets;
+import cn.uc.gamesdk.controller.LoginCtrl;
+import cn.uc.gamesdk.controller.UploadLogCtrl;
+import cn.uc.gamesdk.controller.rex.UIRexCtrl;
+import cn.uc.gamesdk.controller.rex.UIRexUnzip;
+import cn.uc.gamesdk.entity.UcidHistory;
+import cn.uc.gamesdk.log.UCLog;
+import cn.uc.gamesdk.network.ResponseKey;
+import cn.uc.gamesdk.network.SdkResponse;
+import cn.uc.gamesdk.service.CommonService;
+import cn.uc.gamesdk.setting.SdkPreference;
+import cn.uc.gamesdk.util.ResolutionUtil;
+import cn.uc.gamesdk.view.UCLoadingIndicator;
+import cn.uc.gamesdk.view.UILoader;
+import cn.uc.gamesdk.view.loginwidget.config.LoginLayoutWidgetConfig;
+import cn.uc.gamesdk.view.loginwidget.config.WinParams;
+import cn.uc.gamesdk.view.loginwidget.ui.InputWidget;
+import cn.uc.gamesdk.view.loginwidget.ui.LoginHistoryDialog;
+import cn.uc.gamesdk.view.loginwidget.ui.LoginWidget;
+
+
+/**
+ * 默认”简版“登陆控件的行为控制者。
+ * 
+ * @author zhouxy3@ucweb.com
+ * 
+ */
+public class LoginWidgetCtrl extends BaseWidgetCtrl implements BaseWidgetCtrlInterface {
+
+    public static final String CLASS_NAME = "LoginWidgetCtrl";
+
+    private static final int HANDLER_MSG_HIDE_LOADING = 2;
+
+    private static final int HANDLER_MSG_SHOW_LOADING = 1;
+
+    private Handler _handler;
+    private LoginWidget _layoutWidget;
+
+    private Activity _activity;
+
+    private String _username;
+    private String _password;
+
+    private LoginLayoutWidgetConfig _config;
+
+    private IRegisterListener _registerListener;
+
+    private boolean _hasAdd = false;//标记此VIEW是否已经被添加到windowManager中，防止重复添加错误
+
+    /**
+     * 登录控件的控制者。
+     * 
+     * @param activity
+     * @param config
+     * @param widgetChangeListener
+     *            一键注册成功后回调通知切换页面
+     */
+    public LoginWidgetCtrl(Activity activity, LoginLayoutWidgetConfig config, IRegisterListener registerListener) {
+        super(activity);
+        _registerListener = registerListener;
+        _activity = activity;
+
+        if (config != null) {
+            _config = config;
+        } else {
+            initConfig();
+        }
+        initHandler();
+
+        _handler.post(new Runnable() {
+
+            @Override
+            public void run() {
+                initView();
+            }
+        });
+
+    }
+
+    private void initHandler() {
+        _handler = new Handler(Looper.getMainLooper(), new Callback() {
+
+            @Override
+            public boolean handleMessage(Message msg) {
+
+                switch (msg.what) {
+                case HANDLER_MSG_SHOW_LOADING:
+                    UCLoadingIndicator.show(_activity);
+                    break;
+                case HANDLER_MSG_HIDE_LOADING:
+                    UCLoadingIndicator.hide();
+                    break;
+
+                }
+
+                return false;
+            }
+        });
+    }
+
+    @Override
+    public boolean initView() {
+
+        _layoutWidget = new LoginWidget(_activity, _config);
+
+        _layoutWidget.getCheckBox().setChecked(SdkPreference.getAutoLoginState());//读取首选项中的自动登录值，默认为true
+
+        setForgetPasswordClickListener();
+
+        setLoginButtonClickListener();
+
+        setRegisterButtonClickListener();
+
+        final LoginHistoryDialog alertDialog = createLoginHistoryDialog();
+
+        setUsernameListButtonClickListener(alertDialog);
+
+        _layoutWidget.getUsernameInputWidget().getInputEditText().setOnKeyListener(new OnKeyListener() {
+
+            @Override
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if (keyCode == KeyEvent.KEYCODE_BACK) {
+                    removeView();
+                    
+
+                    UCCallbackListenersSets.postCallbackLoginResult(UCGameSDKStatusCode.LOGIN_EXIT, "登录退出");
+                    UCCallbackListenersSets.flushCallbackLoginCache();
+
+
+                    // 调用上传日志
+                    UploadLogCtrl.callUploadLog();
+
+                    // 当前来源页面清空
+                    CommonService.currentNativeSourcePageInfo = null;
+                    GlobalVars.isSdkShowing = false;
+                    UIRexUnzip.asyncCheckUpdate();      // 启动异步操作：检查是否有待解压资源，若有则解压并更新资源
+                    UIRexCtrl.assetsCopy();             // 如果 /data/data 本地存储中没有资源，则启动从 assets 中复制资源的任务
+                }
+                return false;
+            }
+        });
+
+        _layoutWidget.getPasswordInputWidget().getInputEditText().setOnKeyListener(new OnKeyListener() {
+
+            @Override
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+
+                if (keyCode == KeyEvent.KEYCODE_BACK) {
+                    removeView();
+                    
+
+                    UCCallbackListenersSets.postCallbackLoginResult(UCGameSDKStatusCode.LOGIN_EXIT, "登录退出");
+                    UCCallbackListenersSets.flushCallbackLoginCache();
+
+
+                    // 调用上传日志
+                    UploadLogCtrl.callUploadLog();
+
+                    // 当前来源页面清空
+                    CommonService.currentNativeSourcePageInfo = null;
+                    GlobalVars.isSdkShowing = false;
+                    UIRexUnzip.asyncCheckUpdate();      // 启动异步操作：检查是否有待解压资源，若有则解压并更新资源
+                    UIRexCtrl.assetsCopy();             // 如果 /data/data 本地存储中没有资源，则启动从 assets 中复制资源的任务
+                    
+                }
+                return false;
+            }
+        });
+
+
+        return false;
+    }
+
+    private void setUsernameListButtonClickListener(final LoginHistoryDialog alertDialog) {
+        _layoutWidget.getUsernameInputWidget().getRightButton().setOnClickListener(new OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+
+                alertDialog.show(_layoutWidget.getUsernameInputWidget().getInputEditText().getText().toString());
+
+            }
+        });
+    }
+
+    private void setForgetPasswordClickListener() {
+        _layoutWidget.getForgetTextView().setOnClickListener(new OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                GlobalVars.isJumpToH5FromWidget = true;
+                UILoader.enterSdkUI(UILoader.UI_BUSINESS_FORGET_PWD);
+            }
+        });
+    }
+
+    private void setLoginButtonClickListener() {
+        _layoutWidget.getLoginButton().setOnClickListener(new OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+
+                String account = _layoutWidget.getUsernameInputWidget().getInputEditText().getText().toString();
+                String password = _layoutWidget.getPasswordInputWidget().getInputEditText().getText().toString();
+                boolean isAutoLogin = _layoutWidget.getCheckBox().hasChecked();
+
+                if (checkNewPassword(password)) {
+                    //show出等待对话框后登录
+                    _handler.sendEmptyMessage(HANDLER_MSG_SHOW_LOADING);
+                    WidgetRequestCtrl.login(account, password, isAutoLogin, new WidgetRequestListener() {
+
+                        @Override
+                        public void onSuccess(final SdkResponse response) {
+                            switch (response.getCode()) {
+                            case SdkResponse.SUCCESS:
+
+                                _handler.sendEmptyMessage(HANDLER_MSG_HIDE_LOADING);
+                                removeView();
+
+                                GlobalVars.isJumpToH5FromWidget = false;//退出时恢复变量
+
+                                boolean open = LoginCtrl.parseOpenTestStatus(response).status;    //游戏是否开服
+                                int isAlpha = response.getDataJson().optInt(ResponseKey.IS_ALPHA); // 内测码
+
+                                if (open && isAlpha == 1) { //需要内测码
+                                    UILoader.enterSdkUI("game", "", "#!game/validCode/false");
+                                } else if (!open) {
+                                    GlobalVars.isJumpToH5FromWidget = true;
+                                    UILoader.enterSdkUI("game", "", "#!game/notOpen");
+                                }
+
+                                UCCallbackListenersSets.postCallbackLoginResult(UCGameSDKStatusCode.LOGIN_EXIT, "登录退出");
+                                UCCallbackListenersSets.flushCallbackLoginCache();
+
+
+                                // 调用上传日志
+                                UploadLogCtrl.callUploadLog();
+
+                                // 当前来源页面清空
+                                CommonService.currentNativeSourcePageInfo = null;
+                                GlobalVars.isSdkShowing = false;
+                                UIRexUnzip.asyncCheckUpdate();      // 启动异步操作：检查是否有待解压资源，若有则解压并更新资源
+                                UIRexCtrl.assetsCopy();             // 如果 /data/data 本地存储中没有资源，则启动从 assets 中复制资源的任务
+
+                                break;
+                            default:
+                                _handler.post(new Runnable() {
+
+                                    @Override
+                                    public void run() {
+                                        Toast.makeText(_activity, response.getMsg(), Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+
+                                break;
+                            }
+
+                            UCLog.debug(CLASS_NAME, "initView", "login = " + response.toJSONString());
+
+                        }
+
+                        @Override
+                        public void onError(final SdkResponse response) {
+                            UCLog.debug(CLASS_NAME, "initView", "登录调用失败!");
+                            _handler.post(new Runnable() {
+
+                                @Override
+                                public void run() {
+                                    Toast.makeText(_activity, response != null ? response.getMsg() : "登录调用失败!", Toast.LENGTH_SHORT).show();
+
+                                }
+                            });
+                            _handler.sendEmptyMessage(HANDLER_MSG_HIDE_LOADING);
+                        }
+                    });
+                } else {
+                    _handler.post(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            Toast.makeText(_activity, "密码格式不合法", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    private LoginHistoryDialog createLoginHistoryDialog() {
+        final LoginHistoryDialog alertDialog = new LoginHistoryDialog(_activity, new BaseWidgetListener<Integer>() {
+
+            @Override
+            public void callback(Integer t, Object data) {
+                switch (t) {
+                case InputWidget.INPUT_UPDATE_BUTTON:
+                    int itemCount = (Integer) data;
+                    if (itemCount <= 1) {
+                        _layoutWidget.getUsernameInputWidget().hideRightButton();
+                    }
+                    break;
+
+                case InputWidget.INPUT_SET_SELECT_USER:
+                    if (data instanceof UcidHistory) {
+                        UcidHistory ucidHistory = (UcidHistory) data;
+                        setUsername(ucidHistory.getAccount());
+                        setPassword(ucidHistory.getPassword());
+                    }
+                    break;
+                case InputWidget.INPUT_CLEAR_EDIT_TEXT:
+                    //清空输入框输入 
+                    GlobalVars.defaultUcid = "";//当所有账号都删除时清空此值以防止首选项中的最后登录历史再出现
+                    SdkPreference.setLastLoginUCAccount("");//清空首选项中的最后登录历史 
+                    _layoutWidget.getUsernameInputWidget().getInputEditText().setText("");
+                    _layoutWidget.getPasswordInputWidget().getInputEditText().setText("");
+                }
+            }
+        });
+        return alertDialog;
+    }
+
+    private void setRegisterButtonClickListener() {
+        _layoutWidget.getRegisterButton().setOnClickListener(new OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                _handler.sendEmptyMessage(HANDLER_MSG_SHOW_LOADING);
+
+                final String password = String.valueOf(Math.round(Math.random() * 899999 + 100000));
+                WidgetRequestCtrl.register(password, new WidgetRequestListener() {
+
+                    @Override
+                    public void onSuccess(SdkResponse response) {
+
+                        String ucid = response.getDataJson().optString("ucid");
+                        _registerListener.callback(ucid, password);
+
+                        UCLog.debug(CLASS_NAME, "setRegisterButtonClickListener", "register = " + response.toJSONString());
+                        _handler.sendEmptyMessage(HANDLER_MSG_HIDE_LOADING);
+
+                    }
+
+                    @Override
+                    public void onError(final SdkResponse response) {
+                        _handler.post(new Runnable() {
+
+                            @Override
+                            public void run() {
+                                Toast.makeText(_activity, response != null ? response.getMsg() : "登录调用失败!", Toast.LENGTH_SHORT).show();
+
+                            }
+                        });
+
+                        _handler.sendEmptyMessage(HANDLER_MSG_HIDE_LOADING);
+
+                    }
+                });
+
+            }
+        });
+    }
+
+    /**
+     * 验证新密码是否合符要求
+     * 
+     * @param password
+     * @return
+     */
+    private boolean checkNewPassword(String password) {
+        Pattern pattern = Pattern.compile("^[0-9a-zA-Z]{6,20}$");
+        Matcher matcher = pattern.matcher(password);
+        return matcher.find();
+    }
+
+    @Override
+    public boolean showView() {
+
+        UCLog.debug(CLASS_NAME, "showView", "显示登录控件界面。");
+
+        _handler.post(new Runnable() {
+
+            @Override
+            public void run() {
+                if (!_hasAdd) {
+                    WindowManager.LayoutParams params = WinParams.getDefaultParams();
+                    if (0 > _config.x || 0 > _config.y) {
+                        params.gravity = Gravity.CENTER_VERTICAL | Gravity.CENTER_HORIZONTAL;
+                    } else {
+                        params.gravity |= Gravity.TOP | Gravity.LEFT;
+                        params.x = _config.x;
+                        params.y = _config.y;
+                    }
+                    params.flags |= WindowManager.LayoutParams.FLAG_DIM_BEHIND;
+                    params.dimAmount = 0.6f;
+
+                    getWindowManager().addView(_layoutWidget, params);
+                    _hasAdd = true;
+                    ArrayList<UcidHistory> ucidHisList = LoginCtrl.getLoginHistory();
+
+                    if (null != ucidHisList && ucidHisList.size() > 0) {
+                        UcidHistory curAccount = ucidHisList.get(0);
+                        if (null != curAccount) {
+                            LoginWidgetCtrl.this.setUsername(curAccount.getAccount());
+                            LoginWidgetCtrl.this.setPassword(curAccount.getPassword());
+                        }
+                    }
+
+                    if (null != ucidHisList && ucidHisList.size() > 1) {
+                        _layoutWidget.getUsernameInputWidget().showRightButton();
+                    } else {
+                        _layoutWidget.getUsernameInputWidget().hideRightButton();
+                    }
+                }
+            }
+        });
+        return false;
+    }
+
+    @Override
+    public boolean removeView() {
+        UCLog.debug(CLASS_NAME, "removeView", "移除登录控件界面。");
+
+        _handler.post(new Runnable() {
+
+            @Override
+            public void run() {
+                if (_hasAdd) {
+                    getWindowManager().removeView(_layoutWidget);
+                    _hasAdd = false;
+                }
+            }
+        });
+        return false;
+    }
+
+    public String getUsername() {
+        _handler.post(new Runnable() {
+            @Override
+            public void run() {
+                _username = _layoutWidget.getUsernameInputWidget().getInputEditText().getText().toString();
+            }
+        });
+
+        return _username;
+    }
+
+    public void setUsername(final String username) {
+        this._username = username;
+        _handler.post(new Runnable() {
+            @Override
+            public void run() {
+                _layoutWidget.getUsernameInputWidget().getInputEditText().setText(username);
+            }
+        });
+    }
+
+    public String getPassword() {
+
+        _handler.post(new Runnable() {
+            @Override
+            public void run() {
+                _password = _layoutWidget.getPasswordInputWidget().getInputEditText().getText().toString();
+            }
+        });
+
+        UCLog.debug(CLASS_NAME, "getPassword", "_password = " + _password);
+        return _password;
+    }
+
+    public void setPassword(final String password) {
+        this._password = password;
+        _handler.post(new Runnable() {
+            @Override
+            public void run() {
+                _layoutWidget.getPasswordInputWidget().getInputEditText().setText(password);
+            }
+        });
+        UCLog.debug(CLASS_NAME, "setPassword", "_password = " + _password);
+    }
+
+
+    /**
+     * 一键注册成功的监听，用于通知切换界面，传递ucid和密码。
+     * 
+     * @author zhouxy3@ucweb.com
+     * 
+     */
+    public interface IRegisterListener {
+
+        public void callback(String ucid, String password);
+
+    }
+
+
+    @Override
+    public boolean initConfig() {
+        long s0 = System.currentTimeMillis();
+        long s1 = System.currentTimeMillis();
+        UCLog.debug(CLASS_NAME, "initConfig", "初始化界面配置信息 - 开始。");
+
+        //先假设横屏
+        int loginWidgetWidth = 460;
+        int loginWidgetHeight = 350;
+        int loginWidgetMarginLeft;
+        int loginWidgetMarginTop;
+        //默认不使用以下边距值，当起点为-1时只会进行居中对齐 
+        if (ResolutionUtil.isOrientationPortrait()) {
+            loginWidgetMarginLeft = ResolutionUtil.calculatePointForCentered(ResolutionUtil.STANDARD_SCREEN_WIDTH, loginWidgetWidth);
+            loginWidgetMarginTop = ResolutionUtil.calculatePointForCentered(ResolutionUtil.STANDARD_SCREEN_HEIGHT, loginWidgetHeight);
+        } else {
+            loginWidgetMarginLeft = ResolutionUtil.calculatePointForCentered(ResolutionUtil.STANDARD_SCREEN_HEIGHT, loginWidgetWidth);
+            loginWidgetMarginTop = ResolutionUtil.calculatePointForCentered(ResolutionUtil.STANDARD_SCREEN_WIDTH, loginWidgetHeight);
+        }
+
+        loginWidgetMarginLeft = loginWidgetMarginLeft < 0 ? 0 : loginWidgetMarginLeft;
+        loginWidgetMarginTop = loginWidgetMarginTop < 0 ? 0 : loginWidgetMarginTop;
+
+        LoginLayoutWidgetConfig config = new LoginLayoutWidgetConfig(-1, -1, loginWidgetWidth, loginWidgetHeight, "", "ucgamesdk/loginwidget/images/bg.9.png");
+        config.logoImageViewConfig.bgNormalPath = "ucgamesdk/loginwidget/images/9g_logo.png";
+        config.logoImageViewConfig.height = 86;
+        config.logoImageViewConfig.width = 149;
+        config.logoImageViewConfig.leftMargin = 160;
+        config.logoImageViewConfig.topMargin = 5;
+        config.logoImageViewConfig.src = "ucgamesdk/loginwidget/images/9g_logo.png";
+
+        config.titleTextViewConf.height = 40;
+        config.titleTextViewConf.width = 100;
+        config.titleTextViewConf.leftMargin = 100;
+        config.titleTextViewConf.topMargin = 5;
+        config.titleTextViewConf.textColor = "#ffffff";
+        config.titleTextViewConf.textSize = 14;
+
+        config.usernameInputWidgetConf.height = 66;
+        config.usernameInputWidgetConf.width = 410;
+        config.usernameInputWidgetConf.topMargin = 86;
+
+        config.usernameInputWidgetConf.bgColor = "#ffffff";
+        config.usernameInputWidgetConf.bgNormalPath = "ucgamesdk/loginwidget/images/input_bg.9.png";
+        config.usernameInputWidgetConf.bgFocusPath = "ucgamesdk/loginwidget/images/input_bg.9.png";
+
+        config.usernameInputWidgetConf.leftImageViewConfig.height = 60;
+        config.usernameInputWidgetConf.leftImageViewConfig.width = 60;
+        config.usernameInputWidgetConf.leftImageViewConfig.leftMargin = 2;
+        config.usernameInputWidgetConf.leftImageViewConfig.topMargin = 2;
+        config.usernameInputWidgetConf.leftImageViewConfig.bottomMargin = 2;
+        config.usernameInputWidgetConf.leftImageViewConfig.bgNormalPath = "ucgamesdk/loginwidget/images/input_icon_posenal.9.png";
+
+        config.usernameInputWidgetConf.inputEditTextConfig.height = 60;
+        config.usernameInputWidgetConf.inputEditTextConfig.width = 371;
+        config.usernameInputWidgetConf.inputEditTextConfig.textColor = "#ff000000";
+        config.usernameInputWidgetConf.inputEditTextConfig.textSize = 17;
+        config.usernameInputWidgetConf.inputEditTextConfig.hint = "UC账号/手机号/邮箱";
+        config.usernameInputWidgetConf.inputEditTextConfig.leftMargin = 5;
+        config.usernameInputWidgetConf.inputEditTextConfig.bgColor = "#66ffffff";
+
+        config.usernameInputWidgetConf.rightButtonConfig.bgNormalPath = "ucgamesdk/loginwidget/images/input_icon_Arrow.9.png";
+        config.usernameInputWidgetConf.rightButtonConfig.bgFocusPath = "ucgamesdk/loginwidget/images/input_icon_Arrow.9.png";
+        config.usernameInputWidgetConf.rightButtonConfig.width = 80;
+        config.usernameInputWidgetConf.rightButtonConfig.height = 66;
+        config.usernameInputWidgetConf.rightButtonConfig.textColor = "#ffffffff";
+        config.usernameInputWidgetConf.rightButtonConfig.text = "";
+        config.usernameInputWidgetConf.rightButtonConfig.textSize = 14;
+
+        config.passwordInputWidgetConf.height = 66;
+        config.passwordInputWidgetConf.width = 410;
+        config.passwordInputWidgetConf.topMargin = 158;
+        config.passwordInputWidgetConf.bgColor = "#ffffff";
+        config.passwordInputWidgetConf.bgNormalPath = "ucgamesdk/loginwidget/images/input_bg.9.png";
+        config.passwordInputWidgetConf.bgFocusPath = "ucgamesdk/loginwidget/images/input_bg.9.png";
+
+        config.passwordInputWidgetConf.leftImageViewConfig.height = 60;
+        config.passwordInputWidgetConf.leftImageViewConfig.width = 60;
+        config.passwordInputWidgetConf.leftImageViewConfig.leftMargin = 2;
+        config.passwordInputWidgetConf.leftImageViewConfig.topMargin = 2;
+        config.passwordInputWidgetConf.leftImageViewConfig.bottomMargin = 2;
+        config.passwordInputWidgetConf.leftImageViewConfig.bgNormalPath = "ucgamesdk/loginwidget/images/input_icon_password.9.png";
+
+        config.passwordInputWidgetConf.inputEditTextConfig.height = 60;
+        config.passwordInputWidgetConf.inputEditTextConfig.width = 371;
+        config.passwordInputWidgetConf.inputEditTextConfig.textColor = "#ff000000";
+        config.passwordInputWidgetConf.inputEditTextConfig.textSize = 17;
+        config.passwordInputWidgetConf.inputEditTextConfig.hint = "输入密码";
+        config.passwordInputWidgetConf.inputEditTextConfig.isPassword = true;
+
+        config.passwordInputWidgetConf.rightButtonConfig.bgNormalPath = "ucgamesdk/loginwidget/images/btn_white.9.png";
+        config.passwordInputWidgetConf.rightButtonConfig.bgFocusPath = "ucgamesdk/loginwidget/images/btn_white_press.9.png";
+        config.passwordInputWidgetConf.rightButtonConfig.width = 60;
+        config.passwordInputWidgetConf.rightButtonConfig.height = 66;
+        config.passwordInputWidgetConf.rightButtonConfig.textColor = "#ffffffff";
+        config.passwordInputWidgetConf.rightButtonConfig.text = "按钮";
+        config.passwordInputWidgetConf.rightButtonConfig.textSize = 14;
+
+        config.registerButtonConf.width = 200;
+        config.registerButtonConf.height = 60;
+        config.registerButtonConf.bgNormalPath = "ucgamesdk/loginwidget/images/btn_black.9.png";
+        config.registerButtonConf.bgFocusPath = "ucgamesdk/loginwidget/images/btn_black_press.9.png";
+        config.registerButtonConf.topMargin = 270;
+        config.registerButtonConf.leftMargin = 25;
+        config.registerButtonConf.textColor = "#ffffff";
+        config.registerButtonConf.text = "一键注册";
+        config.registerButtonConf.textSize = 18;
+
+        config.loginButtonConf.width = 200;
+        config.loginButtonConf.height = 60;
+        config.loginButtonConf.bgNormalPath = "ucgamesdk/loginwidget/images/btn_orange.9.png";
+        config.loginButtonConf.bgFocusPath = "ucgamesdk/loginwidget/images/btn_orange_press.9.png";
+        config.loginButtonConf.topMargin = 270;
+        // config.loginButtonConf.leftMargin = 240;
+        config.loginButtonConf.rightMargin = 25;
+        config.loginButtonConf.textColor = "#ffffffff";
+        config.loginButtonConf.text = "登录";
+        config.loginButtonConf.textSize = 18;
+
+        config.checkBoxConf.text = "自动登录";
+        config.checkBoxConf.textColor = "#a0ffffff";
+        config.checkBoxConf.textPressColor = "#ffffffff";
+        config.checkBoxConf.textSize = 18;
+        config.checkBoxConf.topMargin = 235;
+        config.checkBoxConf.leftMargin = 35;
+        config.checkBoxConf.width = 28;
+        config.checkBoxConf.height = 28;
+        config.checkBoxConf.bgNormalPath = "ucgamesdk/loginwidget/images/icon_check.png";
+        config.checkBoxConf.bgFocusPath = "ucgamesdk/loginwidget/images/icon_check_press.png";
+        // config.checkBoxConf.fontPath = "ucgamesdk/loginwidget/font/FZYTK.TTF";
+
+        config.forgetPasswordConf.textColor = "#a0ffffff";
+        config.forgetPasswordConf.textPressColor = "#ffffffff";
+        config.forgetPasswordConf.textSize = 18;
+        //config.forgetPasswordConf.leftMargin=334;]
+        config.forgetPasswordConf.rightMargin = 35;
+        config.forgetPasswordConf.topMargin = 236;
+        config.forgetPasswordConf.text = "忘记密码/账号？";
+
+        //统一自适应分辨率
+        config.resolutionAdapter(_activity);
+        _config = config;
+
+        s1 = System.currentTimeMillis();
+        UCLog.debug(CLASS_NAME, "initConfig", "初始化界面配置信息 - 结束。共耗时： " + ((s1 - s0) / 1000f) + " ms");
+        return true;
+    }
+}

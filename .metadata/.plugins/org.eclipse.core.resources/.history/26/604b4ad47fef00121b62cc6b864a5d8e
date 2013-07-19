@@ -1,0 +1,66 @@
+package cn.uc.gamesdk.view.menu;
+
+import java.util.HashMap;
+
+import android.content.Context;
+import android.graphics.drawable.Drawable;
+import cn.uc.gamesdk.controller.rex.BottomMenuParser;
+import cn.uc.gamesdk.entity.floatbutton.params.MenuParams;
+import cn.uc.gamesdk.view.DrawableUtil;
+
+/**
+ * 处理底拦的viewcontroller类
+ * @author liangyc@ucweb.com
+ *
+ */
+public class BottomMenuViewCtrl extends BasicMenuViewCtrl {
+
+    public BottomMenuViewCtrl(Context context) {
+        super(context);
+        setBackground();
+    }
+
+    @Override
+    protected MenuParams genConfigs() {
+        return new BottomMenuParser().getMenuParse(_context);
+    }
+
+    @Override
+    protected String getMenuType() {
+        return "menu";
+    }
+
+    @Override
+    protected boolean needCallbackCP() {
+        return false;
+    }
+    
+    /**
+     * 设置背景图片
+     */
+    public void setBackground(){
+        Drawable  background = DrawableUtil.getNiceDrawableFromName(_param.getUcBackgroundIcon());
+        _menu.setBackgroundFormNiceDrawable(background);
+    }
+
+    /**
+     * 重新设置底拦每个按钮宽度
+     */
+    public void resetItemsWidth() {
+        int total = _items.size();
+        for (MenuItemView item : _items.values()) {
+            item.resetItemWidth(total);
+        }
+    }
+
+    @Override
+    protected HashMap<String, String> getMenuStateLogMap() {
+       HashMap <String, String > menuStateLogMap = new HashMap<String,String>();
+       menuStateLogMap.put("user_center", "A_center_account_b");
+       menuStateLogMap.put("bbs", "A_center_bbs_b");
+       menuStateLogMap.put("strategy", "A_center_gameexp_b");
+       menuStateLogMap.put("feedback", "A_help_b");
+        return menuStateLogMap;
+    }
+
+}

@@ -1,0 +1,348 @@
+package cn.uc.gamesdk.view;
+
+import java.io.InputStream;
+import java.util.Timer;
+import java.util.TimerTask;
+
+import android.app.Activity;
+import android.app.Dialog;
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
+import android.util.DisplayMetrics;
+import android.util.TypedValue;
+import android.view.Gravity;
+import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.LinearInterpolator;
+import android.view.animation.RotateAnimation;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
+import android.widget.RelativeLayout.LayoutParams;
+import android.widget.TextView;
+
+/**
+ * 
+ * sdk自定遮罩类，采用自定义@AlertDialog实现。
+ * 
+ * 采用单例实现。
+ * 
+ * 请务必在activity的销毁时调用destroyMask方法
+ * 
+ * @author chenzh
+ */
+public class LoadingMask {
+
+    private static final int UNMASK_1000 = 700;
+    public static final int TYPE_NORMAL = 1;
+    public static final int TYPE_CANCLE = 2;
+
+    public static final String WINDOW = "window";
+
+    private static final int ALPHA = 60;
+
+    private static final int LOADING_TEXT_SIZE_SP = 15;
+
+    private static LoadingMask _loadingMask = null;
+
+    /** 主承载对话框 */
+    private Dialog _loadingDialog = null;
+
+    /** loading主布局，用于设置背景 */
+    private RelativeLayout _loadingRootLayout = null;
+
+    /** 取消按钮(@LinearLayout) */
+    private LinearLayout _buttonCancel;
+
+    /** 文字提示 */
+    private TextView _textViewloading;
+
+    /** loading菊花所使用图片 */
+    private ImageView _imgLoading;
+
+    /** loading图片 */
+    private BitmapDrawable _imgLoadingBg;
+
+    /** 取消图片 */
+    private BitmapDrawable _buttonCancelBg;
+
+    /** 取消监听器 */
+    private View.OnClickListener _cancelButtonListener;
+
+    /** 让showMask频繁被调用时，平滑过度的定时器 */
+    private Timer _timerHideMask;
+
+    private Activity _activity;
+
+    /** loading菊花动画 */
+    private RotateAnimation _rotateAniImgLoad;
+
+    /** mask显示时，showMask显示接口被调用的重复次数 */
+    private int _showCount = 0;
+
+    /**
+     * 显示遮罩
+     * 
+     * @param ctx
+     * @param msg
+     *            消息
+     * @param cancelBtnListener
+     *            取消按钮监听器
+     */
+    public static synchronized void showMask(Context ctx, String msg, View.OnClickListener cancelBtnListener, int loadMaskType) {
+        if (_loadingMask == null) {
+            _loadingMask = new LoadingMask(ctx);
+        }
+        _loadingMask.mask(ctx, msg, cancelBtnListener, loadMaskType);
+    }
+
+    /**
+     * 
+     * 隐藏遮罩
+     * 
+     * @param ctx
+     */
+    public static void hideMask(Context ctx) {
+        if (_loadingMask != null) {
+            _loadingMask.unMask(ctx, UNMASK_1000);
+        }
+
+    }
+
+    /**
+     * 销毁mask
+     */
+    public static void destoryMask() {
+        if (_loadingMask != null) {
+            _loadingMask.destory();
+            _loadingMask = null;
+        }
+    }
+
+    private LoadingMask(final Context ctx) {
+        _activity = (Activity) ctx;
+
+        final LoadingMask me = this;
+
+        _loadingRootLayout = new RelativeLayout(ctx);
+
+        // 背景遮罩
+        _loadingRootLayout.setBackgroundColor(Color.BLACK);
+        Drawable rootBackgroundDrawable = _loadingRootLayout.getBackground();
+        rootBackgroundDrawable.setAlpha(ALPHA);
+
+        // 居中加载提示条
+        RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        layoutParams.addRule(RelativeLayout.CENTER_IN_PARENT);
+        LinearLayout layoutCenterVertial = new LinearLayout(ctx);
+        layoutCenterVertial.setBackgroundColor(Color.BLACK);
+        layoutCenterVertial.setOrientation(LinearLayout.HORIZONTAL);
+        _loadingRootLayout.addView(layoutCenterVertial, layoutParams);
+
+        layoutCenterVertial.setBackgroundDrawable(DrawableUtil.createRoundDrawable(Color.BLACK, Color.BLACK));
+
+        // loading提示框
+        LinearLayout.LayoutParams tiplayoutParams = new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.FILL_PARENT);
+        tiplayoutParams.gravity = Gravity.CENTER;
+        _textViewloading = new TextView(ctx);
+        _textViewloading.setGravity(Gravity.CENTER);
+        _textViewloading.setTextSize(TypedValue.COMPLEX_UNIT_SP, LOADING_TEXT_SIZE_SP);
+        _textViewloading.setText("正在加载...");
+
+        // 以字体大小来做边距
+        int margin = (int) _textViewloading.getTextSize();
+
+        tiplayoutParams.setMargins(margin, margin / 2, margin, margin / 2);
+
+        _textViewloading.setTextColor(Color.WHITE);
+        layoutCenterVertial.addView(_textViewloading, tiplayoutParams);
+
+        // 加载菊花图片
+        LinearLayout.LayoutParams _imgLoadingLP = new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        _imgLoadingLP.gravity = Gravity.CENTER;
+        _imgLoadingLP.setMargins(margin / 2, margin / 2, margin / 2, margin / 2);
+        _imgLoading = new ImageView(ctx);
+        int imgLoadingBgSize = (int) (margin * 1.7f);
+        _imgLoadingBg = LoadingMask.createScaleBitmapDrawble(ctx, "ucgamesdk/images/loadrefresh.png", imgLoadingBgSize, imgLoadingBgSize);
+        _imgLoading.setBackgroundDrawable(_imgLoadingBg);
+        layoutCenterVertial.addView(_imgLoading, _imgLoadingLP);
+
+        //		// 间隔条
+        //		LinearLayout.LayoutParams lineLP = new LinearLayout.LayoutParams(
+        //				LayoutParams.WRAP_CONTENT, LayoutParams.FILL_PARENT);
+        //		_imgLoadingLP.gravity = Gravity.CENTER;
+        //		ImageView lineImg = new ImageView(ctx);
+        //		lineImg.setBackgroundDrawable(LoadingMask.createScreenScaleBitmapDrawble(
+        //				ctx, "ucgamesdk/images/loadline.png", 1));
+        //
+        //		layoutCenterVertial.addView(lineImg, lineLP);
+
+        // ------- 取消按钮 ------------
+        LinearLayout.LayoutParams canceLayoutLP = new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        canceLayoutLP.gravity = Gravity.CENTER;
+        _buttonCancel = new LinearLayout(ctx);
+        layoutCenterVertial.addView(_buttonCancel, canceLayoutLP);
+
+        LinearLayout.LayoutParams imgCancelLP = new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        imgCancelLP.gravity = Gravity.CENTER;
+        imgCancelLP.setMargins(margin, margin / 2, margin, margin / 2);
+        ImageView cancelView = new ImageView(ctx);
+        _buttonCancelBg = LoadingMask.createScaleBitmapDrawble(ctx, "ucgamesdk/images/loadcancel.png", margin * 2, margin * 2);
+        cancelView.setBackgroundDrawable(_buttonCancelBg);
+        _buttonCancel.addView(cancelView, imgCancelLP);
+        // 设置取消按钮事件
+        _buttonCancel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                me.unMask(ctx, UNMASK_1000);
+                if (_cancelButtonListener != null) {
+                    _cancelButtonListener.onClick(_buttonCancel);
+                }
+            }
+        });
+        // -------- end ---------
+
+        // 设置对话框
+        _loadingDialog = new Dialog(ctx, android.R.style.Theme_Translucent_NoTitleBar);
+        _loadingDialog.setCancelable(false);
+        _loadingDialog.getWindow().setBackgroundDrawable(new ColorDrawable(0));
+        _loadingDialog.setContentView(_loadingRootLayout);
+
+        _timerHideMask = new Timer();
+
+        initAnimation();
+    }
+
+    private void setType(int loadMaskType) {
+        if (loadMaskType == TYPE_CANCLE) {
+            _buttonCancel.setVisibility(View.VISIBLE);
+        } else {
+            _buttonCancel.setVisibility(View.GONE);
+        }
+    }
+
+    private synchronized void mask(final Context ctx, final String msg, final View.OnClickListener cancelBtnlListener, int loadMaskType) {
+        _timerHideMask.cancel();
+        try {
+            if (_loadingDialog != null && !_activity.isFinishing()) {
+                if (!_loadingDialog.isShowing()) {
+                    _loadingDialog.show();
+                    _imgLoading.startAnimation(_rotateAniImgLoad);
+                    if (++_showCount == 1) {
+                        _loadingRootLayout.getBackground().setAlpha(ALPHA);
+                    }
+                }
+                this.setType(loadMaskType);
+                _textViewloading.setText(msg);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        _cancelButtonListener = cancelBtnlListener;
+    }
+
+    private void initAnimation() {
+        // 旋转动画
+        _rotateAniImgLoad = new RotateAnimation(0.0f, 360f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
+        _rotateAniImgLoad.setDuration(800);
+        _rotateAniImgLoad.setInterpolator(new LinearInterpolator()); // 旋转匀速进行
+        _rotateAniImgLoad.setRepeatCount(-1);
+        _imgLoading.startAnimation(_rotateAniImgLoad);
+    }
+
+    /**
+     * @param ctx
+     * @param delay
+     *            延时（毫秒）
+     */
+    private synchronized void unMask(Context ctx, int delay) {
+        _timerHideMask.cancel();
+        _timerHideMask = new Timer();
+        _timerHideMask.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                _activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            if (_loadingDialog != null && !_activity.isFinishing()) {
+                                _showCount = 0;
+                                _loadingDialog.dismiss();
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                });
+            }
+        }, delay);
+    }
+
+    /**
+     * 销毁
+     */
+    private void destory() {
+        if (_loadingDialog != null) {
+            if (this._activity != null && !_activity.isFinishing()) {
+                _loadingDialog.dismiss();
+            }
+            _loadingDialog.cancel();
+            _loadingDialog = null;
+        }
+
+        if (_timerHideMask != null) {
+            _timerHideMask.purge();
+            _timerHideMask.cancel();
+        }
+    }
+
+    /**
+     * 获取asset目录文件
+     * 
+     * @param ctx
+     * @param name
+     * @return
+     */
+    private static BitmapDrawable getAssetDrawable(Context ctx, String name) {
+        try {
+            InputStream is = ctx.getAssets().open(name);
+            return new BitmapDrawable(is);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     * 创建适应屏幕分辨率的图片
+     * 
+     * 根据屏幕宽度，按比例转化大小
+     * 
+     * @param ctx
+     * @param assetBitmapPath
+     * @return
+     */
+    private static BitmapDrawable createScaleBitmapDrawble(Context ctx, String assetBitmapPath, int heightDip, int widthDip) {
+        BitmapDrawable bitmapDrawable = getAssetDrawable(ctx, assetBitmapPath);
+        if (bitmapDrawable == null) {
+            return null;
+        }
+
+        // 获取屏幕宽度
+        Bitmap bitmap = bitmapDrawable.getBitmap();
+        DisplayMetrics metrics = ctx.getResources().getDisplayMetrics();
+        // 获取密度
+        float scale = metrics.density;
+
+        int widthScalePixel = (int) (widthDip * scale + 0.5f);
+        int heightScalePixel = (int) (heightDip * scale + 0.5f);
+
+        Bitmap b2 = Bitmap.createScaledBitmap(bitmap, widthScalePixel, heightScalePixel, true);
+        return new BitmapDrawable(b2);
+    }
+
+}

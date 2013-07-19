@@ -1,0 +1,11 @@
+package cn.uc.gamesdk.view.menu;
+
+/**
+ * 在执行完ontouchListener后执行回调的接口
+ * @author liangyc@ucweb.com
+ *
+ */
+public interface IAfterTouchListener {
+    
+    public void callback();
+}

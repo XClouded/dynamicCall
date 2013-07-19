@@ -1,0 +1,230 @@
+package cn.uc.gamesdk.view;
+
+import android.content.Context;
+import android.content.res.Configuration;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.UnderlineSpan;
+import android.util.DisplayMetrics;
+import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.View;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import cn.uc.gamesdk.background.service.TipsMessageNotification;
+import cn.uc.gamesdk.common.GlobalVars;
+import cn.uc.gamesdk.controller.CommonCtrl;
+import cn.uc.gamesdk.controller.TipsInfoCtrl;
+import cn.uc.gamesdk.entity.TipsInfo;
+import cn.uc.gamesdk.log.StatLogConst;
+import cn.uc.gamesdk.log.UCLog;
+import cn.uc.gamesdk.util.StringUtil;
+
+/**
+ * 
+ * 用途。
+ * Tips显示的View
+ * <br>==========================
+ * <br> 公司：优视科技-游戏中心
+ * <br> 开发：chenbl@ucweb.com
+ * <br> 创建时间：2013-4-1下午2:24:19
+ * <br>==========================
+ */
+public class TipsView extends LinearLayout {
+
+    private static final String CLASS_NAME = "TipsView";
+
+    //背景图片路径
+    private final String DEFAULT_TIPS_BACKGROUND_DRAWABLE = "conf/tipsBackground.9.png";
+    private final String DEFAULT_TIPS_BACKGROUND_SELECTED_DRAWABLE = "conf/tipsBackgroundSelected.9.png";
+    //9游Icon图片路径
+    private final String DEFAULT_ICON_DRAWABLE = "conf/tipsGameIcon.png";
+    //cancle图片路径
+    private final String DEFAULT_CANCLE_NORMAL_DRAWABLE = "conf/tipsClose.png";
+    private final String DEFAULT_PRESS_CANCLE_DRAWABLE = "conf/tipsCloseActive.png";
+    //默认链接地址的颜色   
+    private final int DEFAULT_LINK_TEXT_COLOR = 0Xfffd7b35;
+    //textView中默认的字体大小
+    private final int DEFAULT_TEXTVIEW_FONT_SIZE = 15;
+
+    private ImageView icon; //9游图标
+    private ImageButton cancleButton;//取消按钮
+    private TextView textView; //文本显示域
+
+    private TipsView _tipsView;
+  
+    public TipsView(Context context) {
+        super(context);
+        
+        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        this.setLayoutParams(layoutParams);
+        this.setBackgroundDrawable(DrawableUtil.getNiceDrawableFromName(DEFAULT_TIPS_BACKGROUND_DRAWABLE));
+        this.setGravity(Gravity.CENTER_VERTICAL);
+        _tipsView = this;
+        //初始化页面布局
+        initView(context);
+    }
+   
+
+    /**
+     * 初始化界面
+     * 
+     * @param context
+     */
+    private void initView(Context context) {
+        //设置9游图标
+        icon = new ImageView(context);
+        int width = DrawableUtil.pxFromDip(26);
+        int hight = DrawableUtil.pxFromDip(26);
+        LinearLayout.LayoutParams iconLayoutParams = new LinearLayout.LayoutParams(width, hight);
+        iconLayoutParams.setMargins(DrawableUtil.pxFromDip(2), DrawableUtil.pxFromDip(8), DrawableUtil.pxFromDip(2), DrawableUtil.pxFromDip(8));
+        icon.setLayoutParams(iconLayoutParams);
+        Drawable iconDrawable = DrawableUtil.getDrawableByFileName(DEFAULT_ICON_DRAWABLE);
+        icon.setImageDrawable(iconDrawable);
+        this.addView(icon);
+
+        //设置textView样式
+        textView = new TextView(context);
+        textView.setTextSize(DEFAULT_TEXTVIEW_FONT_SIZE);
+        textView.setTextColor(Color.WHITE);
+        this.addView(textView);
+
+        //设置取消按钮相关资源
+        cancleButton = new ImageButton(context);
+        width = DrawableUtil.pxFromDip(26);
+        hight = DrawableUtil.pxFromDip(26);
+        LinearLayout.LayoutParams cancleButtonLayoutParams = new LinearLayout.LayoutParams(width, hight);
+        cancleButtonLayoutParams.setMargins(DrawableUtil.pxFromDip(2), DrawableUtil.pxFromDip(8), DrawableUtil.pxFromDip(2), DrawableUtil.pxFromDip(8));
+        cancleButton.setLayoutParams(cancleButtonLayoutParams);
+        Drawable nomalDrawable = DrawableUtil.getDrawableByFileName(DEFAULT_CANCLE_NORMAL_DRAWABLE);
+        Drawable pressedDrawable = DrawableUtil.getDrawableByFileName(DEFAULT_PRESS_CANCLE_DRAWABLE);
+        Drawable drawable = DrawableUtil.composeStateDrawable(nomalDrawable, pressedDrawable);
+        cancleButton.setBackgroundDrawable(drawable);
+        this.addView(cancleButton);
+
+    }
+
+    
+    @Override
+    protected void onConfigurationChanged(Configuration newConfig) {
+        DisplayMetrics dm = GlobalVars.context.getResources().getDisplayMetrics();
+        int screenWidth = dm.widthPixels;
+        int width = screenWidth - DrawableUtil.pxFromDip(80);
+        LinearLayout.LayoutParams textViewLayoutParams = new LinearLayout.LayoutParams(width, LayoutParams.FILL_PARENT);
+        textView.setLayoutParams(textViewLayoutParams);
+    }
+
+    
+    /**
+     * 为textView设置显示的text
+     * 为两个#号中间的字段增加下划线及改变字体颜色
+     * 
+     * @param msg
+     *            需要显示的消息字段
+     */
+    public void setMsg(String msg) {
+        /**
+         * 下面代码如果放在initView方法中，在横竖屏切换时，tips页面显示不正常
+         */
+        DisplayMetrics dm = GlobalVars.context.getResources().getDisplayMetrics();
+        int screenWidth = dm.widthPixels;
+        int width = screenWidth - DrawableUtil.pxFromDip(80);
+        LinearLayout.LayoutParams textViewLayoutParams = new LinearLayout.LayoutParams(width, LayoutParams.FILL_PARENT);
+        textView.setLayoutParams(textViewLayoutParams);
+        textView.setGravity(Gravity.CENTER_VERTICAL | Gravity.CENTER);
+
+        msg = StringUtil.subString(msg, 16, "...");
+        int begin = msg.indexOf('#');
+        int end = msg.lastIndexOf('#');
+        StringBuilder sb = new StringBuilder();
+        if (begin != -1 && end != -1 && begin != end) {
+            sb.append(msg.substring(0, begin));
+            sb.append(msg.substring(begin + 1, end));
+            if (msg.length() > end + 1) {
+                sb.append(msg.substring(end + 1));
+            }
+        }
+
+        if (begin != -1 && end != -1) {
+            SpannableString sp = new SpannableString(sb.toString());
+            //设置前景色为默认颜色  
+            sp.setSpan(new ForegroundColorSpan(DEFAULT_LINK_TEXT_COLOR), begin, end - 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            //设置下划线  
+            sp.setSpan(new UnderlineSpan(), begin, end - 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            textView.setText(sp);
+        } else {
+            textView.setText(msg);
+        }
+
+    }
+
+    /**
+     * 设置textView的点击事件
+     * 
+     * @param service
+     */
+    public void setViewClickListener(final TipsInfo tipsInfo) {
+
+        OnClickListener textViewClickListener = new OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                //页面跳转
+                if (StringUtil.isNotEmpty(tipsInfo.getContentUrl())) {
+                    UCLog.statNoTs(StatLogConst.TIPS_TIPS_L + "{" + tipsInfo.getMsgId() + "}", "", "");
+                    CommonCtrl.enterSdkWebUI(UILoader.UI_BUSINESS_ENTER_TIPS_PAGE, tipsInfo.getContentUrl());
+                    //移除正在显示的tips
+                    TipsInfoCtrl.removeTipsView();
+                    //关闭tips页面显示逻辑                    
+                    TipsInfoCtrl.closeTipsShow();
+
+                } else {
+                    UCLog.debug(CLASS_NAME, "textViewClick", "tips contentUrl is empty .........");
+                }
+            }
+        };
+
+        OnClickListener cancleButtonClickListener = new OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                UCLog.statNoTs(StatLogConst.TIPS_CLOSE_B + "{" + tipsInfo.getMsgId() + "}", "", "");
+                //移除正在显示的tips
+                TipsInfoCtrl.removeTipsView();
+                if (tipsInfo.getMsgRate() != TipsMessageNotification.SINGLE_TIPS_RATE) {
+                    //当点击的数据库从数据库中移除对应的Tips信息    
+                    TipsInfoCtrl.removeTipsInfo(tipsInfo.getId());
+                }
+            }
+        };
+
+        OnTouchListener touchListener = new View.OnTouchListener() {
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                int eventaction = event.getAction();
+                switch (eventaction) {
+                case MotionEvent.ACTION_DOWN:
+                    _tipsView.setBackgroundDrawable(DrawableUtil.getNiceDrawableFromName(DEFAULT_TIPS_BACKGROUND_SELECTED_DRAWABLE));
+                    break;
+                case MotionEvent.ACTION_UP:
+                    _tipsView.setBackgroundDrawable(DrawableUtil.getNiceDrawableFromName(DEFAULT_TIPS_BACKGROUND_DRAWABLE));
+                    break;
+                default:
+                    break;
+                }
+                return false;
+            }
+        };
+        textView.setOnTouchListener(touchListener);
+        textView.setOnClickListener(textViewClickListener);
+        cancleButton.setOnClickListener(cancleButtonClickListener);
+    }
+
+
+}

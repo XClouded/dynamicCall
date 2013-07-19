@@ -1,0 +1,26 @@
+package cn.uc.gamesdk.bridge;
+
+import java.lang.reflect.Method;
+
+/***
+ * bridge的反射调用方法
+ * 
+ * @author chenzh
+ */
+public class BridgeReflect {
+	public static final String CLASS_NAME = "BridgeRelect";
+
+	public static void invokeMethod(Class<?> cls, Object obj,
+			String methodName, Class<?>[] paramTypeCls, Object[] paramObj) {
+		try {
+			Method method = cls.getDeclaredMethod(methodName, paramTypeCls);
+			method.setAccessible(true);
+			method.invoke(obj, paramObj);
+		} catch (Exception e) {
+			// 跨版本调用api导致的日志没必要打
+			// 反射调用失败，表示没有异常
+//			UCLog.debug(CLASS_NAME, "invokeMethod", "invoke method failed :"
+//					+ methodName, e);
+		}
+	}
+}

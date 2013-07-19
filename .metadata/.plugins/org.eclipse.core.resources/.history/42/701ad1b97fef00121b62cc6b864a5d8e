@@ -1,0 +1,431 @@
+package cn.uc.gamesdk.view.floatView;
+
+
+import java.util.List;
+
+import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.res.Configuration;
+import android.graphics.PixelFormat;
+import android.graphics.Point;
+import android.util.DisplayMetrics;
+import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.View.OnTouchListener;
+import android.view.ViewGroup.LayoutParams;
+import android.view.WindowManager;
+import android.widget.LinearLayout;
+import android.widget.PopupWindow;
+import cn.uc.gamesdk.common.CommonConst;
+import cn.uc.gamesdk.common.GlobalVars;
+import cn.uc.gamesdk.controller.MenuCtrl;
+import cn.uc.gamesdk.controller.rex.FloatButtonParse;
+import cn.uc.gamesdk.entity.floatbutton.params.FloatButtonParams;
+import cn.uc.gamesdk.entity.floatbutton.params.MenuItemParams;
+import cn.uc.gamesdk.log.UCLog;
+import cn.uc.gamesdk.setting.PointPosSetting;
+import cn.uc.gamesdk.view.DrawableUtil;
+import cn.uc.gamesdk.view.menu.FLoatMenuViewCtrl;
+import cn.uc.gamesdk.view.menu.IAfterTouchListener;
+
+/**
+ * 悬浮控件，封装了悬浮按钮和悬浮菜单
+ * 
+ * @author chenbl@ucweb.com
+ * 
+ */
+public class UCFloater {
+    private static final String CLASS_NAME = "UcFloater";
+
+    /**
+     * windowManger相关
+     */
+    private WindowManager _windowManager;
+    private WindowManager.LayoutParams _wmParams;
+    private Activity _activity;    //需要绑定的Activity对象
+
+    /**
+     * 悬浮按钮相关
+     */
+    private UCFloatButton _floatButton;             //悬浮按钮
+    private LinearLayout _floatView = null;       //将floatButtton封装在里面，这样气泡才可以添加到其右上角
+    private FloatButtonParse _floatButtonParse;   //读取悬浮菜单配置文件
+    private FloatButtonParams _floatButtonParams; //悬浮菜单配置参数
+    private int _floatButtonWidth;                //按钮的实际宽度，用于计算悬浮菜单的相对位置
+    private int _floatButtonHight;                //按钮的实际高度，用于计算悬浮菜单的相对位置
+    private boolean _visible = false;             //标识当前的悬浮按钮是否可见
+
+    /**
+     * 悬浮菜单
+     */
+    private PopupWindow _PopupWindow = null; //悬浮菜单
+    private FLoatMenuViewCtrl _floatMenuViewCtrl = null; //悬浮菜单控制器
+    private LinearLayout _popupWindowView = null;//悬浮菜单View
+
+    /**
+     * 表示弹出框是否可以弹出
+     * true 说明可以弹出，
+     * false 说明已经弹出，不可以再次弹出
+     */
+    boolean _canShow = true;
+
+    /**
+     * 屏幕实际的宽度和高度
+     */
+    private int _width;//屏幕的实际宽度
+    private int _height;//屏幕的实际高度
+
+    /**
+     * 移动相关
+     */
+    private boolean _isMove = false; //用于标识当前是否是移动状态
+    private int _oldOffsetX; //按下前x轴方向的位置
+    private int _oldOffsetY; //按下前Y轴方向的位置
+    private int _moveThreshold; //移动阈值
+
+    /**
+     * 存储数值相关
+     */
+    private Point _point = new Point(); //用于存储位置信息
+    private String posX; //文件中X轴数据存储的Key
+    private String posY; //文件中Y轴数据存储的Key
+
+
+    /**
+     * 创建比初始化Uc Floater控件
+     */
+    public void createUcFloater(Activity activity) {
+
+        _activity = activity;
+
+        //防止应用程序被kill掉后，出现崩溃的现象
+        if (GlobalVars.context == null)
+            GlobalVars.context = activity.getApplicationContext();
+
+        /**
+         * 初始化并设置WindowManager及WindowManger.LayoutParams信息
+         */
+        _windowManager = (WindowManager) activity.getSystemService(Context.WINDOW_SERVICE);
+        _wmParams = new WindowManager.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.TYPE_APPLICATION, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                PixelFormat.TRANSLUCENT);
+        _wmParams.gravity = Gravity.LEFT | Gravity.TOP;
+
+
+        _floatButtonParse = new FloatButtonParse();
+        _floatButtonParams = _floatButtonParse.getFloatButtonParse(activity);
+        _moveThreshold = DrawableUtil.pxFromDip(_floatButtonParams.getMoveThreshold());
+
+        _floatMenuViewCtrl = new FLoatMenuViewCtrl(activity);
+        _floatMenuViewCtrl.setAfterTouchListener(new IAfterTouchListener() {
+
+            @Override
+            public void callback() {
+                if (_PopupWindow != null) {
+                    _canShow = true;
+                    _PopupWindow.dismiss();
+                    _floatButton.showBubble();
+                    _floatButton.setDefaultDrwable();
+                    MenuCtrl.callUpdateMenuRemote("menu", false);
+                }
+            }
+        });
+
+        //初始化View
+        initView();
+
+        //注册广播
+        registerReceiver();
+    }
+
+    /**
+     * 注册广播
+     */
+    private void registerReceiver() {
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(CommonConst.BUBBLE_UPDATE_ACTION);
+        _activity.registerReceiver(numberChangeReceiver1, filter);
+    }
+
+    /**
+     * 取消注册广播监听
+     */
+    public void unRegisterBroadcast() {
+        _activity.unregisterReceiver(numberChangeReceiver1);
+    }
+
+    /**
+     * number数字变化接收器，设置九游图标上bubble的值
+     */
+    private BroadcastReceiver numberChangeReceiver1 = new BroadcastReceiver() {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            /**
+             * 接收传递过来的number数据，更新九游图标上bubble的值
+             */
+            int number = intent.getIntExtra("number", 0);
+            UCLog.debug(CLASS_NAME, "receive broadcast", "get broadcast:" + number);
+            _floatButton.setBubbleNumber(number);
+            //传入的数字大于0并且悬浮菜单没有显示的时候调用
+            if (number > 0 && _canShow) {
+                _floatButton.showBubble();
+            }
+        }
+
+    };
+
+    /**
+     * 初始化view
+     */
+    private void initView() {
+
+        _floatButtonWidth = DrawableUtil.pxFromDip(_floatButtonParams.getWidth());
+        _floatButtonHight = DrawableUtil.pxFromDip(_floatButtonParams.getHeight());
+        LayoutParams floatbuttonLayoutParams = new LinearLayout.LayoutParams(_floatButtonWidth, _floatButtonHight);
+
+        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.FILL_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+
+        _floatView = new LinearLayout(_activity);
+        _floatView.setLayoutParams(new LinearLayout.LayoutParams(layoutParams));
+
+        _floatButton = new UCFloatButton(_activity, _floatButtonParams);
+        _floatButton.setLayoutParams(floatbuttonLayoutParams);
+        _floatButton.setOnTouchListener(touch);
+
+        _floatView.addView(_floatButton);
+        UCBubble bubble = new UCBubble(_activity, _floatButton, _floatButtonParams.getBubbleParams());
+        _floatButton.setBubble(bubble);
+        int number = MenuCtrl.getGlobalVarsNotificationTotal("menu");
+        _floatButton.setBubbleNumber(number);
+
+        if (number > 0)
+            _floatButton.showBubble();
+        _popupWindowView = genPopupWindowView();
+        _PopupWindow = new PopupWindow(_popupWindowView, LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        _floatMenuViewCtrl.updateBubbleStatus();
+        _PopupWindow.setOutsideTouchable(true);
+        _PopupWindow.setTouchable(true);
+
+    }
+
+    /**
+     * 处理View的触摸事件
+     * 在该方法内，通过移动阈值的大小判断是移动事件或者是单击事件
+     */
+    OnTouchListener touch = new OnTouchListener() {
+        float[] temp = new float[] { 0f, 0f };
+        long start = System.currentTimeMillis();
+
+        public boolean onTouch(View v, MotionEvent event) {
+
+            int eventaction = event.getAction();
+            if (!_isMove) {
+                _oldOffsetX = _wmParams.x;
+                _oldOffsetY = _wmParams.y;
+            }
+            float x = event.getX();
+            float y = event.getY();
+
+            switch (eventaction) {
+
+            case MotionEvent.ACTION_DOWN: // 按下事件，记录按下时手指在悬浮窗的XY坐标值
+                temp[0] = x;
+                temp[1] = y;
+                break;
+
+            case MotionEvent.ACTION_MOVE:
+                long current = System.currentTimeMillis();
+                if (current - start > 25) {
+                    start = current;
+
+                    _wmParams.x += (int) (x - temp[0]);
+                    _wmParams.y += (int) (y - temp[1]);
+
+                    if (!_isMove) {
+                        //当移动的距离大于阈值时，算作移动
+                        if (Math.abs(_wmParams.x - _oldOffsetX) > _moveThreshold || Math.abs(_wmParams.y - _oldOffsetY) > _moveThreshold) {
+                            _isMove = true;
+                            _canShow = true;
+                            _PopupWindow.dismiss();
+                            _floatButton.setDefaultDrwable();
+                            _windowManager.updateViewLayout(_floatView, _wmParams);
+                        }
+                    } else {
+                        _windowManager.updateViewLayout(_floatView, _wmParams);
+                    }
+                }
+                break;
+
+            case MotionEvent.ACTION_UP:
+                int newOffsetX = _wmParams.x;
+                if (_isMove) {
+                    //滑动事件
+                    if (newOffsetX >= _width / 2 - (_floatButtonWidth / 2)) {
+                        _wmParams.x = _width;
+                        _wmParams.y += (int) (y - temp[1]);
+
+                    } else {
+                        _wmParams.x = 0;
+                        _wmParams.y += (int) (y - temp[1]);
+                    }
+
+                    /**
+                     * 移动图标，保存移动后的坐标位置
+                     */
+                    _windowManager.updateViewLayout(_floatView, _wmParams);
+                    _point.set(_wmParams.x, _wmParams.y);
+                    savePoint();
+
+                    _isMove = false;   //更新是否移动的状态改变
+
+                } else {
+                    //单击事件
+                    if (newOffsetX > _width / 2) {
+                        if (_canShow) {
+
+                            _canShow = false;
+                            _popupWindowView.setBackgroundDrawable(_floatMenuViewCtrl.getRightBackground());
+                            _popupWindowView.setPadding(8, DrawableUtil.pxFromDip(2), 16, DrawableUtil.pxFromDip(2));
+                            int deltaX = _floatButtonWidth;
+                            List<MenuItemParams> menuItemsParams = _floatMenuViewCtrl.getMenuParams().getMenuItems();
+                            if (menuItemsParams.size() > 0) {
+                                //  悬浮菜单项所占用的宽度
+                                deltaX += (menuItemsParams.size() - 1) * DrawableUtil.pxFromDip(30);//每一项的item的宽度为30
+
+                                deltaX += (menuItemsParams.size() - 1) * DrawableUtil.pxFromDip(menuItemsParams.get(0).getMarginLeft() + menuItemsParams.get(0).getMarginRight());//加上左右边距
+                                //需要加多一个偏移16 + 8 px + 一个菜单项和悬浮图标的宽度差  
+                                deltaX += 24 + DrawableUtil.pxFromDip(30 + menuItemsParams.get(0).getMarginLeft() + menuItemsParams.get(0).getMarginRight()) - _floatButtonWidth;
+                                ;
+                                _PopupWindow.showAsDropDown(_floatButton, -1 * deltaX, -_floatButtonHight);
+                            }
+
+                            _floatButton.hideBubble();
+                            _floatButton.setExpandedDrawable();
+
+                        } else {
+                            _canShow = true;
+                            _PopupWindow.dismiss();
+                            _floatButton.showBubble();
+                            _floatButton.setDefaultDrwable();
+                            MenuCtrl.callUpdateMenuRemote("menu", false);
+                        }
+
+                    } else {
+                        if (_canShow) {
+                            _canShow = false;
+                            _popupWindowView.setBackgroundDrawable(_floatMenuViewCtrl.getLeftBackground());
+                            _popupWindowView.setPadding(16, DrawableUtil.pxFromDip(2), 8, DrawableUtil.pxFromDip(2));
+                            _PopupWindow.showAsDropDown(_floatButton, _floatButtonWidth, -_floatButtonHight);
+                            _floatButton.hideBubble();
+                            _floatButton.setExpandedDrawable();
+                        } else {
+                            _canShow = true;
+                            _PopupWindow.dismiss();
+                            _floatButton.showBubble();
+                            _floatButton.setDefaultDrwable();
+                            MenuCtrl.callUpdateMenuRemote("menu", false);
+
+                        }
+                    }
+                }
+                break;
+            }
+            return false;
+        }
+    };
+
+    /**
+     * 悬浮按钮显示或者隐藏的效果
+     * 
+     * @param x
+     *            单位：%，例如当输入50，意味着显示在屏幕x轴的中间。
+     * @param y
+     *            单位：%，例如当输入50，意味着显示在屏幕y轴的中间。
+     * @param visible
+     *            当visible为true则显示，当visible为false则隐藏。
+     */
+    public void show(double x, double y, boolean visible) {
+        //当屏幕的方向发生改变时，未经过onDestory到onCreate的过程，而只调用 onConfigurationChanged方法时需要将原悬浮框移除WindowManager
+        if (_visible == true) {
+            _windowManager.removeView(_floatView);
+        }
+        _visible = visible;
+
+        //获取屏幕大小
+        DisplayMetrics dm = _activity.getResources().getDisplayMetrics();
+        _width = dm.widthPixels;
+        _height = dm.heightPixels;
+
+        //横屏       
+        if (_activity.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            posX = _activity.getClass().getName() + "LANDSCAPE_X";
+            posY = _activity.getClass().getName() + "LANDSCAPE_Y";
+        } else if (_activity.getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
+            //竖屏
+            posX = _activity.getClass().getName() + "PORTRAIT_X";
+            posY = _activity.getClass().getName() + "PORTRAIT_Y";
+        }
+
+        // cp输入的优先级高于配置文件中读取的
+        int defaultX;
+        int defaultY;
+        if (x >= 0 && x <= 100) {
+            defaultX = (x >= 50.0) ? _width : 0;
+        } else {
+            defaultX = (_floatButtonParams.getStartX() > 50.0) ? _width : 0;
+        }
+        if (y >= 0 && y <= 100) {
+            defaultY = (int) (y * _height) / 100;
+        } else {
+            defaultY = (int) (_floatButtonParams.getStartY() * _height) % 100;
+        }
+
+        _wmParams.x = PointPosSetting.getSetting(_activity, posX, defaultX);
+        _wmParams.y = PointPosSetting.getSetting(_activity, posY, defaultY);
+
+        //是否显示
+        if (visible) {
+            //将View 添加到Window中
+            _windowManager.addView(_floatView, _wmParams);
+        }
+    }
+
+    /**
+     * 将View从当前的WindowManager中移除
+     * 取消注册广播监听
+     * 
+     */
+    public synchronized void destory() {
+        if (_visible) {
+            _windowManager.removeView(_floatView);
+            unRegisterBroadcast();
+            _floatMenuViewCtrl.unRegisterBroadcast();
+            _visible = false;
+        }
+    }
+
+    /**
+     * 保存移动到的坐标信息
+     */
+    private void savePoint() {
+        PointPosSetting.setSetting(_activity, posX, _point.x);
+        PointPosSetting.setSetting(_activity, posY, _point.y);
+    }
+
+    private LinearLayout genPopupWindowView() {
+        //设置布局
+        LinearLayout layout = new LinearLayout(_activity);
+        LinearLayout.LayoutParams lLayoutParams = null;
+        lLayoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        layout.setLayoutParams(lLayoutParams);
+
+        LinearLayout.LayoutParams lFloatMenuLayoutParams = new android.widget.LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        layout.addView(_floatMenuViewCtrl.getMenuView(), lFloatMenuLayoutParams);
+
+        return layout;
+    }
+}

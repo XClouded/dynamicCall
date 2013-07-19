@@ -1,0 +1,107 @@
+package cn.uc.gamesdk.view.menu;
+
+import java.util.HashMap;
+
+import android.content.Context;
+import android.graphics.drawable.Drawable;
+import android.view.MotionEvent;
+import android.view.View;
+import cn.uc.gamesdk.controller.rex.FloatMenuParser;
+import cn.uc.gamesdk.entity.floatbutton.params.MenuItemParams;
+import cn.uc.gamesdk.entity.floatbutton.params.MenuParams;
+import cn.uc.gamesdk.view.DrawableUtil;
+
+/**
+ * 处理悬浮菜单项的viewcontroller类
+ * 
+ * @author liangyc@ucweb.com
+ * 
+ */
+public class FLoatMenuViewCtrl extends BasicMenuViewCtrl {
+
+    public FLoatMenuViewCtrl(Context context) {
+        super(context);
+    }
+
+    @Override
+    protected MenuParams genConfigs() {
+        return new FloatMenuParser().getMenuParse(_context);
+    }
+
+    @Override
+    protected String getMenuType() {
+        return "menu";
+    }
+
+    /**
+     * 获取左背景图片
+     */
+    public Drawable getLeftBackground() {
+        Drawable leftBackground = DrawableUtil.getNiceDrawableFromName(_param.getUcBackgroundLeftIcon());
+        return leftBackground;
+    }
+
+    /**
+     * 获取右背景图片
+     */
+    public Drawable getRightBackground() {
+        Drawable rightBackground = DrawableUtil.getNiceDrawableFromName(_param.getUcBackgroundRightIcon());
+        return rightBackground;
+    }
+
+    //    /**
+    //     * 设置左背景图片
+    //     */
+    //    public void setLeftBackground() {       
+    //        Drawable  leftBackground = DrawableUtil.getNiceDrawableFromName(_param.getUcBackgroundLeftIcon());
+    //        _menu.setBackgroundFormNiceDrawable(leftBackground);
+    //    }
+    //    
+    //    /**
+    //     * 设置右背景图片
+    //     */
+    //    public void setRightBackground(){
+    //        Drawable  rightBackground = DrawableUtil.getNiceDrawableFromName(_param.getUcBackgroundRightIcon());
+    //        _menu.setBackgroundFormNiceDrawable(rightBackground);
+    //    }
+
+    @Override
+    protected boolean needCallbackCP() {
+        return true;
+    }
+
+    @Override
+    public void setMenuViewItemOnTouchListener(final MenuItemView item, final MenuItemParams menuParams) {
+        item.setOnTouchListener(new View.OnTouchListener() {
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                int action = event.getAction();
+                switch (action) {
+                case MotionEvent.ACTION_DOWN:
+                    //item.setBackgroundDrawable(DrawableUtil.getDrawableByFileName(menuParams.getSelectedBackgroundIcon()));
+                    item.getLinearLayout().setBackgroundDrawable(DrawableUtil.getDrawableByFileName(menuParams.getSelectedBackgroundIcon()));
+                    break;
+                case MotionEvent.ACTION_UP:
+                    item.getLinearLayout().setBackgroundDrawable(null);
+                    //item.setBackgroundDrawable(null);
+                    break;
+                default:
+                    break;
+                }
+                return false;
+            }
+
+        });
+    }
+
+    @Override
+    protected HashMap<String, String> getMenuStateLogMap() {
+        HashMap<String, String> menuStateLogMap = new HashMap<String, String>();
+        menuStateLogMap.put("user_center", "A_float_account_b");
+        menuStateLogMap.put("bbs", "A_float_bbs_b");
+        menuStateLogMap.put("strategy", "A_float_gameexp_b");
+        menuStateLogMap.put("feedback", "A_float_b");
+        return menuStateLogMap;
+    }
+}

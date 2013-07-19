@@ -1,0 +1,284 @@
+package cn.uc.gamesdk.view;
+
+import java.io.IOException;
+import java.io.InputStream;
+
+import android.R;
+import android.content.Context;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Matrix;
+import android.graphics.PixelFormat;
+import android.graphics.Rect;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.GradientDrawable.Orientation;
+import android.graphics.drawable.LayerDrawable;
+import android.graphics.drawable.NinePatchDrawable;
+import android.graphics.drawable.StateListDrawable;
+import android.os.Build;
+import android.util.DisplayMetrics;
+import cn.uc.gamesdk.common.GlobalVars;
+import cn.uc.gamesdk.common.UCApplication;
+import cn.uc.gamesdk.controller.rex.UIRexConfCtrl;
+import cn.uc.gamesdk.log.UCLog;
+import cn.uc.gamesdk.util.CommonUtil;
+import cn.uc.gamesdk.util.StreamUtil;
+import cn.uc.gamesdk.view.graphics.UCBackBtnDrawable;
+
+public class DrawableUtil {
+
+    /**
+     * 转{@Drawable}为@{Bitmap}
+     * 
+     * @param drawble
+     * @return
+     */
+    public static Bitmap drawableToBitmap(Drawable drawble) {
+        int width = drawble.getIntrinsicWidth();
+        int height = drawble.getIntrinsicHeight();
+        Bitmap bitmap = Bitmap.createBitmap(width, height, drawble.getOpacity() != PixelFormat.OPAQUE ? Bitmap.Config.ARGB_8888 : Bitmap.Config.RGB_565);
+        Canvas canvas = new Canvas(bitmap);
+        drawble.setBounds(0, 0, width, height);
+        drawble.draw(canvas);
+        return bitmap;
+    }
+
+    /**
+     * 获取checkbox的drawble对象,包括check和uncheck两种
+     * 
+     * @return
+     */
+    public static StateListDrawable getCheckBoxDrawble() {
+        // unchecked drawable
+        GradientDrawable roundRectUnchecked = new GradientDrawable();
+        roundRectUnchecked.setStroke(1, Color.GRAY);
+        roundRectUnchecked.setColor(Color.WHITE);
+        roundRectUnchecked.setCornerRadius(0.5f);
+        roundRectUnchecked.setSize(pxFromDip(20), pxFromDip(20));
+        roundRectUnchecked.setBounds(0, 0, 0, 0);
+
+        // checked drawable
+        Bitmap tickDrawable = CommonUtil.getAssetBitmap(UCApplication.getApplicationContext(), "ucgamesdk/images/uc_agreetick.png");
+        LayerDrawable roundRectChecked = new LayerDrawable(new Drawable[] { roundRectUnchecked, CommonUtil.centerBitmapDrawalbe(tickDrawable) });
+
+        // combine the drawable
+        StateListDrawable slCheckBoxDrawable = new StateListDrawable();
+        slCheckBoxDrawable.addState(new int[] { R.attr.state_checked }, roundRectChecked);
+        slCheckBoxDrawable.addState(new int[] { -R.attr.state_checked }, roundRectUnchecked);
+
+        return slCheckBoxDrawable;
+    }
+
+    /**
+     * 将android的dip值根据屏幕像素密度(desnsity)转换为px值,以供子类设置高度和宽度等
+     * 
+     * @param dip
+     * @return
+     */
+    public static int pxFromDip(int dip) {
+        DisplayMetrics metrics = UCApplication.getApplicationContext().getResources().getDisplayMetrics();
+        float scale = metrics.density;
+        int px = (int) (dip * scale + 0.5f);
+        return px;
+    }
+
+
+    /**
+     * 用于制作按钮。
+     * 创建纯颜色，并且具有状态的{@StateListDrawable}对象
+     * 
+     * @param colorEnabled
+     *            正常状态下的颜色
+     * @param colorPressed
+     *            按住的颜色
+     * @param borderColor
+     *            边框颜色
+     * @return
+     */
+    public static Drawable getUCStateDrawable(int colorEnabled, int colorPressed, int borderColor) {
+        Drawable sdEnabled = createRoundDrawable(colorEnabled, borderColor);
+        Drawable sdPressed = createRoundDrawable(colorPressed, borderColor);
+        StateListDrawable stld = new StateListDrawable();
+        stld.addState(new int[] { -android.R.attr.state_enabled }, sdEnabled);
+        stld.addState(new int[] { android.R.attr.state_pressed }, sdPressed);
+        return stld;
+    }
+
+    /**
+     * 用于使用Drawable对象生成具有状态的{@StateListDrawable}对象
+     * 
+     * @param colorEnabled
+     *            正常状态下的颜色
+     * @param colorPressed
+     *            按住的颜色
+     * @param borderColor
+     *            边框颜色
+     * @return
+     */
+    public static Drawable getUCStateDrawable(Drawable enabled, Drawable pressed) {
+        StateListDrawable stld = new StateListDrawable();
+        stld.addState(new int[] { -android.R.attr.state_enabled }, enabled);
+        stld.addState(new int[] { android.R.attr.state_pressed }, pressed);
+        return stld;
+    }
+
+    /**
+     * 创建圆角{@Drawable}对象
+     * 
+     * @param color
+     * @param borderColor
+     * @return
+     */
+    public static Drawable createRoundDrawable(int color, int borderColor) {
+        GradientDrawable gDrawable = new GradientDrawable(Orientation.BOTTOM_TOP, new int[] { color, color });
+        gDrawable.setCornerRadius(8);
+        gDrawable.setStroke(1, borderColor);
+        return gDrawable;
+    }
+
+    public static Drawable createBackBtnDrawable(int width, int height, int bgColor, int borderColor) {
+        UCBackBtnDrawable ucBackBtnDrawable = new UCBackBtnDrawable(width, height, bgColor, borderColor);
+        return ucBackBtnDrawable.getBackBtnBackgound();
+    }
+
+    public static Drawable getUCBackBtnStateDrawable(int colorEnabled, int colorPressed, int borderColor, int height) {
+        Drawable sdEnabled = createBackBtnDrawable((int) (1.5 * height), height, colorEnabled, borderColor);
+        // 4.2在 StateListDrawable上有bug。
+        if (Build.VERSION.SDK_INT >= 17) {
+            return sdEnabled;
+        }
+
+        Drawable sdPressed = createBackBtnDrawable((int) (1.5 * height), height, colorPressed, borderColor);
+        StateListDrawable stld = new StateListDrawable();
+        stld.addState(new int[] { -android.R.attr.state_enabled }, sdEnabled);
+        stld.addState(new int[] { android.R.attr.state_pressed }, sdPressed);
+        return stld;
+    }
+
+    /**
+     * 通过文件名字获得Drawable 对象
+     * 
+     * @param fileName
+     * @return
+     */
+    public static Drawable getDrawableByFileName(String fileName) {
+
+        Drawable drawable = null;
+        Context context = GlobalVars.context;
+        InputStream inputStream = null;
+        try {
+            inputStream = UIRexConfCtrl.getFileInCurrentRexProj(fileName);
+            drawable = new BitmapDrawable(context.getResources(), inputStream);
+        } catch (IOException e) {
+            UCLog.warn("getDrawableByFileName", "getAssetDrawable", e.getMessage());
+        } finally {
+            StreamUtil.close(inputStream);
+        }
+
+        return drawable;
+    }
+
+
+    /**
+     * 通过两张图片，设置选中效果，
+     * 实现xml配置中的Select效果
+     * 
+     * @param nomalDrawable
+     *            正常显示时的图片
+     * @param PressedDrawable
+     *            获得焦点和选中时显示的图片
+     * @return 含有动画效果的图片
+     */
+    public static Drawable composeStateDrawable(Drawable nomalDrawable, Drawable PressedDrawable) {
+
+        StateListDrawable drawable = new StateListDrawable();
+        drawable.addState(new int[] { android.R.attr.state_focused }, PressedDrawable);
+        drawable.addState(new int[] { android.R.attr.state_pressed }, PressedDrawable);
+        drawable.addState(new int[] { android.R.attr.state_enabled }, nomalDrawable);
+
+        return drawable;
+    }
+
+    /**
+     * 通过图片的输入流，创建旋转180度的图片
+     * 
+     * @param inputStream
+     * @return
+     */
+    public static Drawable rotateDrawable(InputStream inputStream) {
+        Matrix matrix = new Matrix();
+        matrix.setRotate(180);
+        Bitmap bmp = BitmapFactory.decodeStream(inputStream);
+        Bitmap newitmap = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
+        BitmapDrawable newBitmapDrawable = new BitmapDrawable(newitmap);
+        return newBitmapDrawable;
+    }
+
+    /**
+     * 通过图片的输入流，创建旋转180度的图片
+     * 
+     * @param d
+     * @return
+     */
+    public static Drawable rotateDrawable(Drawable d) {
+        Matrix matrix = new Matrix();
+        matrix.setRotate(180);
+        Bitmap bmp = drawableToBitmap(d);
+        Bitmap newitmap = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
+        BitmapDrawable newBitmapDrawable = new BitmapDrawable(newitmap);
+        return newBitmapDrawable;
+    }
+
+    /**
+     * 通过文件名称获得对应的图片
+     * 当传入的文件名称为.9图片时，会构造一个.9图片的drawable对象；
+     * 当输入的是一个普通图片时，将会返回一个普通图片的drawable对象
+     * 
+     * @param fileName
+     *            图片的名称，包含相对路径和格式
+     * @return
+     */
+    public static Drawable getNiceDrawableFromName(String fileName) {
+        InputStream inputStream;
+        Drawable drawable = null;
+        try {
+            inputStream = UIRexConfCtrl.getFileInCurrentRexProj(fileName);
+            Rect out = new Rect();
+
+            Bitmap bitmap = BitmapFactory.decodeStream(inputStream, out, null);
+
+            byte[] chunk = bitmap.getNinePatchChunk();
+
+            if (chunk == null) {
+                //普通图片
+                drawable = new BitmapDrawable(bitmap);
+            } else {
+                //.9图片
+                drawable = new NinePatchDrawable(GlobalVars.context.getResources(), bitmap, chunk, out, null);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return drawable;
+    }
+    
+    /**
+     * This method convets dp unit to equivalent device specific value in pixels. 
+     * 
+     * @param dp A value in dp(Device independent pixels) unit. Which we need to convert into pixels
+     * @param context Context to get resources and device specific display metrics
+     * @return A float value to represent Pixels equivalent to dp according to device
+     */
+    public static float convertDpToPixel(float dp){
+        Resources resources = GlobalVars.context.getResources();
+        DisplayMetrics metrics = resources.getDisplayMetrics();
+        float px = dp * (metrics.densityDpi/160f);
+        return px;
+    }
+}

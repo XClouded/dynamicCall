@@ -1,0 +1,62 @@
+package cn.uc.gamesdk.view.menu;
+
+import android.content.Context;
+import android.graphics.drawable.Drawable;
+import android.widget.LinearLayout;
+import cn.uc.gamesdk.entity.floatbutton.params.MenuItemActionParams;
+import cn.uc.gamesdk.entity.floatbutton.params.MenuParams;
+import cn.uc.gamesdk.view.DrawableUtil;
+
+/**
+ * 菜单项抽象类
+ * 
+ * @author liangyc@ucweb.com
+ * 
+ */
+public class MenuView extends LinearLayout {
+    @SuppressWarnings("unused")
+    private static String CLASS_NAME = "MenuView";
+
+    private MenuItemActionParams _curActionParam = null;
+
+    public MenuView(Context context, MenuParams params, MenuItemActionParams action) {
+        super(context);
+        _curActionParam = action;        
+        init(params);
+    }
+
+    public MenuView(Context context, MenuParams params) {
+        this(context, params, null);
+    }
+
+    private void init(MenuParams params) {
+        this.setOrientation(LinearLayout.HORIZONTAL);
+        this.setLayoutParams(new LinearLayout.LayoutParams(params.getWidth(), LinearLayout.LayoutParams.WRAP_CONTENT));
+//        this.setPadding(DrawableUtil.pxFromDip(5), DrawableUtil.pxFromDip(5), DrawableUtil.pxFromDip(5), DrawableUtil.pxFromDip(5));
+     
+    }
+   
+    /**
+    * 设置背景图片
+    */
+   public void setBackgroundFormNiceDrawable(Drawable drawable){
+       this.setBackgroundDrawable(drawable);
+   }
+
+    public MenuItemActionParams getCurActionParam() {
+        return _curActionParam;
+    }
+
+    public void setCurActionParam(MenuItemActionParams _curService) {
+        this._curActionParam = _curService;
+    }
+
+    /**
+     * 根据菜单项设置宽度,暂定每个宽度是30dip
+     * 
+     * @param total
+     */
+    public void setWidth(int total) {
+        this.getLayoutParams().width = DrawableUtil.pxFromDip(30 * total);
+    }
+}

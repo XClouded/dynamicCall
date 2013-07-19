@@ -16,7 +16,7 @@ public class UCGameSdk {
 
 	private static UCGameSdk ucgamesdk = null;
 
-	private static Map<String, IDispatcher> dexLoaderMap = null;
+	private Map<String, IDispatcher> dexLoaderMap = null;
 
 	public static UCGameSdk getDefault() {
 		if (null == ucgamesdk)
@@ -36,12 +36,13 @@ public class UCGameSdk {
 	public void login(Activity activity, UCCallbackListener<String> listener) {
 		IDispatcher loginDispatcher = dexLoaderMap.get(CApi.API_LOGIN);// 获取login接口对应的dex接口入口实例
 
-		loginDispatcher.loadMethodFromClass(CApi.API_LOGIN);
+		loginDispatcher.apiInvoke(CApi.API_LOGIN);
 
 	}
 
 	public void enterUI(IActivityControl activity) {
 		Log.d(CLASS_NAME, "invokeActivity1");
+		
 		IDispatcher uiDispatcher = dexLoaderMap.get(CApi.API_WEBVIEW);
 		uiDispatcher.invokeActivity(activity);
 	}
@@ -49,13 +50,13 @@ public class UCGameSdk {
 	public String getSid() {
 		IDispatcher sidDispatcher = dexLoaderMap.get(CApi.API_GET_SID);
 
-		Bundle data = sidDispatcher.loadMethodFromClass(CApi.API_GET_SID);
+		Bundle data = sidDispatcher.apiInvoke(CApi.API_GET_SID);
 		return data.getString("sid");
 	}
 
 	public String update() {
 		IDispatcher updateDispatcher = dexLoaderMap.get(CApi.API_UPDATE);
-		if (null != updateDispatcher.loadMethodFromClass(CApi.API_UPDATE)) {
+		if (null != updateDispatcher.apiInvoke(CApi.API_UPDATE)) {
 			return "return true from update call";
 
 		} else {

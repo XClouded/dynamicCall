@@ -14,17 +14,16 @@ public final class R {
         public static final int ic_launcher=0x7f020000;
     }
     public static final class id {
-        public static final int btn_activity=0x7f070005;
-        public static final int btn_clear=0x7f070002;
-        public static final int btn_float=0x7f070008;
-        public static final int btn_getsid=0x7f070007;
-        public static final int btn_init=0x7f070004;
-        public static final int btn_login=0x7f070006;
+        public static final int btn_activity=0x7f070004;
+        public static final int btn_clear=0x7f070001;
+        public static final int btn_float=0x7f070007;
+        public static final int btn_getsid=0x7f070006;
+        public static final int btn_init=0x7f070003;
+        public static final int btn_login=0x7f070005;
         public static final int btn_release=0x7f070000;
-        public static final int btn_update=0x7f070003;
-        public static final int button1=0x7f070001;
-        public static final int scrollView=0x7f070009;
-        public static final int textView3=0x7f07000a;
+        public static final int btn_update=0x7f070002;
+        public static final int scrollView=0x7f070008;
+        public static final int textView3=0x7f070009;
     }
     public static final class layout {
         public static final int activity_dex_loader=0x7f030000;

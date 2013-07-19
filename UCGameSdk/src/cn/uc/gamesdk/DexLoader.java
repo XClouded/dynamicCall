@@ -4,11 +4,9 @@ import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
+import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 
-import cn.uc.gamesdk.entity.DexClassPath;
 import cn.uc.gamesdk.iconst.CApi;
 import cn.uc.gamesdk.iface.IDexClassLoader;
 import cn.uc.gamesdk.iface.IDispatcher;
@@ -16,6 +14,11 @@ import cn.uc.gamesdk.tools.FileUtil;
 import cn.uc.gamesdk.tools.GlobalVars;
 import dalvik.system.DexClassLoader;
 
+/**
+ * dex加载器
+ * 
+ * @author：ligs@ucweb.com
+ */
 public class DexLoader implements IDexClassLoader {
 
 	private static final String CLASS_NAME = "DexLoader";
@@ -38,6 +41,15 @@ public class DexLoader implements IDexClassLoader {
 
 	public Map<String, IDispatcher> Creator() {
 		initConfig();
+
+		Iterator iter = dispatcherMap.entrySet().iterator();
+		IDispatcher classDispatcher = null;
+		while (iter.hasNext()) {
+			Map.Entry entry = (Map.Entry) iter.next();
+			classDispatcher = (IDispatcher) entry.getValue();
+			classDispatcher.register(SdkListener.getInstance(), dispatcherMap);// 注册统一回调侦听器
+		}
+
 		return dispatcherMap;
 	}
 
@@ -78,45 +90,27 @@ public class DexLoader implements IDexClassLoader {
 
 				try {
 					Class libProviderClass = classLoader.loadClass(className);
-					Method getInstanceMethod = libProviderClass
-							.getDeclaredMethod("getInstance", null);
+//					Method getInstanceMethod = libProviderClass
+//							.getDeclaredMethod("getInstance", null);
 
-					classDispatcher = (IDispatcher) getInstanceMethod.invoke(
-							null, null);
+//					classDispatcher = (IDispatcher) getInstanceMethod.invoke(
+//							null, null);
 
-					classDispatcher.registerCallback(SdkListener.getInstance());// 注册统一回调侦听器
+					classDispatcher=(IDispatcher)libProviderClass.newInstance();
 					dexClassMap.put(dexName, classDispatcher);
 					dispatcherMap.put(apiName, classDispatcher);
 
 				} catch (ClassNotFoundException e) {
 					e.printStackTrace();
-				} catch (NoSuchMethodException e) {
-					e.printStackTrace();
 				} catch (IllegalArgumentException e) {
 					e.printStackTrace();
 				} catch (IllegalAccessException e) {
 					e.printStackTrace();
-				} catch (InvocationTargetException e) {
+				} catch (InstantiationException e) {
 					e.printStackTrace();
 				}
 			}
 
 		}
-
-		// DexClassPath core = new DexClassPath();
-		// core.classPath = "cn.uc.gamesdk.core.Dispatcher";
-		// core.dexPath = "jars/core.jar";
-		// dexSet.add(core);
-		//
-		// DexClassPath update = new DexClassPath();
-		// update.classPath = "cn.uc.gamesdk.update.Dispatcher";
-		// update.dexPath = "jars/update.jar";
-		// if (dexSet.contains(update))
-		// dexSet.add(update);
-		//
-		// dexPathMap.put(CApi.API_LOGIN, core);
-		// dexPathMap.put(CApi.API_INIT, core);
-		// dexPathMap.put(CApi.API_WEBVIEW, core);
-		// dexPathMap.put(CApi.API_UPDATE, update);
 	}
 }

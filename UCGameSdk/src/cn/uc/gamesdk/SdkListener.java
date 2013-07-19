@@ -28,8 +28,8 @@ public class SdkListener implements SdkCallbackListener {
 	public void callback(String apiName, Bundle data) {
 		Log.d(CLASS_NAME, apiName + ":" + data.getString("data"));
 
-		Toast.makeText(GlobalVars.context,
-				"api:"+apiName + " call\ndata:" + data.getString("data"),
-				Toast.LENGTH_SHORT).show();
+//		Toast.makeText(GlobalVars.context,
+//				"api:"+apiName + " call\ndata:" + data.getString("data"),
+//				Toast.LENGTH_SHORT).show();
 	}
 }

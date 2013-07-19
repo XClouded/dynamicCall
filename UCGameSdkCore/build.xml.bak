@@ -13,7 +13,7 @@
 		</path>
 		
 								<path id="cordova">
-			<pathelement path="${basedir}/co.jar" />
+			<pathelement path="${basedir}/common.jar" />
 		</path>
 		
 	<property name="projectPath" value="${basedir}/UCGameSdkCore"/>

@@ -1,48 +1,56 @@
 package cn.uc.gamesdk.update;
 
-import android.util.Log;
+import android.os.Bundle;
 import cn.uc.gamesdk.iface.IActivityControl;
 import cn.uc.gamesdk.iface.IDexClassLoader;
 import cn.uc.gamesdk.iface.IDispatcher;
-import cn.uc.gamesdk.ilistener.UCCallbackListener;
+import cn.uc.gamesdk.ilistener.SdkCallbackListener;
 
 public class Dispatcher implements IDispatcher {
-	private static final String CLASS_NAME="DISPATCHER FROM UPDATE";
-	
+	private static final String CLASS_NAME = "DISPATCHER FROM UPDATE";
+
 	private static final String CLASS_UPDATE_H5 = "h5";
 	private static final String CLASS_UPDATE_CORE = "core";
 
 	private static Dispatcher _dispatcher = null;
 	private static IDexClassLoader _classLoader = null;
+	private SdkCallbackListener sdkCallBackListener = null;
 
 	public static Dispatcher getInstance() {
-		if (null == _dispatcher)
+		if (null == _dispatcher) {
 			_dispatcher = new Dispatcher();
+		}
 
 		return _dispatcher;
 	}
 
-	@Override
-	public void setClassLoader(IDexClassLoader classLoader) {
-		_classLoader = classLoader;
-	}
-	
 	public boolean loadClass(String clazz) {
 
 		return false;
 	}
 
 	@Override
-	public boolean loadMethodFromClass(String apiName,UCCallbackListener<String> listener, Object... params) {
-		Log.d(CLASS_NAME,apiName);
-		listener.callback(0, "I am from update dispatcher");
-		return false;
+	public void invokeActivity(IActivityControl activity) {
+
 	}
 
 	@Override
-	public void invokeActivity(IActivityControl activity) {
-		// TODO Auto-generated method stub
-		
+	public Bundle loadMethodFromClass(String apiName, Bundle data) {
+
+		return null;
 	}
 
+	@Override
+	public Bundle loadMethodFromClass(String apiName) {
+		return loadMethodFromClass(apiName,null);
+	}
+	
+	@Override
+	public void registerCallback(SdkCallbackListener listener) {
+		sdkCallBackListener = listener;
+	}
+
+	public SdkCallbackListener getRegisterCallback() {
+		return sdkCallBackListener;
+	}
 }

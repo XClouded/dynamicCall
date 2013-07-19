@@ -1,0 +1,24 @@
+package cn.uc.gamesdk.iface;
+
+import cn.uc.gamesdk.ilistener.SdkCallbackListener;
+import cn.uc.gamesdk.ilistener.UCCallbackListener;
+
+public interface IDispatcher {
+	public boolean loadClass(String clazz);
+
+	public Object loadMethodFromClass(String apiName,
+			UCCallbackListener<String> listener, Object... params);
+
+	public Object loadMethodFromClass(String apiName);
+
+	public Object loadMethodFromClass(String apiName, Object... params);
+
+	public Object loadMethodFromClass(String apiName,
+			UCCallbackListener<String> listener);
+
+	public void invokeActivity(IActivityControl activity);
+
+	public void registerCallback(SdkCallbackListener listener);
+	
+	public void getRegisterCallback();
+}

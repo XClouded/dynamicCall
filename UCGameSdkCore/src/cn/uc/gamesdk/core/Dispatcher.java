@@ -1,12 +1,13 @@
 package cn.uc.gamesdk.core;
 
 import android.app.Activity;
-import cn.uc.gamesdk.api.apiLogin;
+import android.os.Bundle;
+import android.util.Log;
 import cn.uc.gamesdk.iconst.CApi;
 import cn.uc.gamesdk.iface.IActivityControl;
 import cn.uc.gamesdk.iface.IDexClassLoader;
 import cn.uc.gamesdk.iface.IDispatcher;
-import cn.uc.gamesdk.ilistener.UCCallbackListener;
+import cn.uc.gamesdk.ilistener.SdkCallbackListener;
 import cn.uc.gamesdk.layout.ActivityLayout;
 
 public class Dispatcher implements IDispatcher {
@@ -14,6 +15,8 @@ public class Dispatcher implements IDispatcher {
 
 	private static Dispatcher _dispatcher = null;
 	private static IDexClassLoader _classLoader = null;
+
+	private SdkCallbackListener sdkCallBackListener = null;
 
 	public static Dispatcher getInstance() {
 		if (null == _dispatcher)
@@ -28,29 +31,37 @@ public class Dispatcher implements IDispatcher {
 	}
 
 	@Override
-	public boolean loadMethodFromClass(String apiName,
-			UCCallbackListener<String> listener, Object... params) {
-		if (CApi.API_LOGIN.equals(apiName)) {
-			apiLogin.setLoingMessage(params[0].toString());// 调用 DEX内部的方法
-			listener.callback(0, "I am from core dispatcher");
-			
-			// 调用外部DEX类的方法
-			IDispatcher classDispatcher = _classLoader.Creator(CApi.API_UPDATE);
-			classDispatcher.loadMethodFromClass("h5",listener, new Object[] {});
-		}
-
-		return true;
-	}
-
-	@Override
-	public void setClassLoader(IDexClassLoader classLoader) {
-		_classLoader = classLoader;
-	}
-
-	@Override
 	public void invokeActivity(IActivityControl activity) {
-		Activity mainActivity=(Activity)activity;
-		ActivityLayout layout=new ActivityLayout(mainActivity);
+		Log.d(CLASS_NAME, "invokeActivity");
+		Activity mainActivity = (Activity) activity;
+		ActivityLayout layout = new ActivityLayout(mainActivity);
 		mainActivity.setContentView(layout);
 	}
+
+	@Override
+	public Bundle loadMethodFromClass(String apiName, Bundle data) {
+		Bundle result = new Bundle();
+		if (CApi.API_GET_SID.equals(apiName)) {
+			result.putString("data", "this is from remote callback");
+			sdkCallBackListener.callback(apiName, result);
+			result.putString("sid", "fasdfasdfasdF");
+		}
+		return result;
+	}
+
+	@Override
+	public Bundle loadMethodFromClass(String apiName) {
+		return loadMethodFromClass(apiName, null);
+	}
+
+	@Override
+	public void registerCallback(SdkCallbackListener listener) {
+		Log.d(CLASS_NAME, "set callback");
+		sdkCallBackListener = listener;
+	}
+
+	public SdkCallbackListener getRegisterCallback() {
+		return sdkCallBackListener;
+	}
+
 }

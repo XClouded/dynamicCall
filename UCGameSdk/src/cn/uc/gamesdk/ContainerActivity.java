@@ -7,11 +7,9 @@ import cn.uc.gamesdk.iface.IActivityControl;
 
 public class ContainerActivity extends Activity implements IActivityControl {
 
-	protected void onCreate(Bundle savedInstanceState)
-	{
+	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		
-		DexLoader.getInstance().Creator(CApi.API_WEBVIEW).invokeActivity(this);
-		
+
+		UCGameSdk.getDefault().enterUI(this);
 	}
 }

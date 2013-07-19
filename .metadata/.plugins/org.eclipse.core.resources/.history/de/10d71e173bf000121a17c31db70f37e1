@@ -1,0 +1,15 @@
+package cn.uc.gamesdk;
+
+import android.os.Bundle;
+import android.util.Log;
+import cn.uc.gamesdk.ilistener.SdkCallbackListener;
+
+public class SdkListener implements SdkCallbackListener {
+
+	private static final String CLASS_NAME = "SdkListener";
+
+	@Override
+	public void callback(String apiName, Bundle data) {
+		Log.d(CLASS_NAME, apiName);
+	}
+}

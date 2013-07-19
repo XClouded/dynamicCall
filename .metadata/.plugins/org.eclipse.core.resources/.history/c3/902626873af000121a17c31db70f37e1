@@ -1,0 +1,14 @@
+package cn.uc.gamesdk;
+
+import android.os.Bundle;
+import cn.uc.gamesdk.ilistener.SdkCallbackListener;
+
+public class SdkListener implements SdkCallbackListener {
+
+	@Override
+	public void callback(String apiName, Bundle data) {
+		// TODO Auto-generated method stub
+
+	}
+
+}

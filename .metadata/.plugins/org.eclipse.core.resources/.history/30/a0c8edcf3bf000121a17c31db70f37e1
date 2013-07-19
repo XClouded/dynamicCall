@@ -1,0 +1,73 @@
+package cn.uc.gamesdk.core;
+
+import android.app.Activity;
+import cn.uc.gamesdk.api.apiLogin;
+import cn.uc.gamesdk.iconst.CApi;
+import cn.uc.gamesdk.iface.IActivityControl;
+import cn.uc.gamesdk.iface.IDexClassLoader;
+import cn.uc.gamesdk.iface.IDispatcher;
+import cn.uc.gamesdk.ilistener.UCCallbackListener;
+import cn.uc.gamesdk.layout.ActivityLayout;
+
+public class Dispatcher implements IDispatcher {
+	private static final String CLASS_NAME = "DISPATCHER FROM CORE";
+
+	private static Dispatcher _dispatcher = null;
+	private static IDexClassLoader _classLoader = null;
+
+	public static Dispatcher getInstance() {
+		if (null == _dispatcher)
+			_dispatcher = new Dispatcher();
+
+		return _dispatcher;
+	}
+
+	@Override
+	public boolean loadClass(String clazz) {
+		return false;
+	}
+
+	@Override
+	public Object loadMethodFromClass(String apiName,
+			UCCallbackListener<String> listener, Object... params) {
+		if (CApi.API_LOGIN.equals(apiName)) {
+			listener.callback(0, "I am from core dispatcher");
+
+			// // 调用外部DEX类的方法
+			// IDispatcher classDispatcher =
+			// _classLoader.Creator(CApi.API_UPDATE);
+			// classDispatcher.loadMethodFromClass("h5",listener, new Object[]
+			// {});
+		}
+
+		return true;
+	}
+
+	@Override
+	public void invokeActivity(IActivityControl activity) {
+		Activity mainActivity = (Activity) activity;
+		ActivityLayout layout = new ActivityLayout(mainActivity);
+		mainActivity.setContentView(layout);
+	}
+
+	@Override
+	public Object loadMethodFromClass(String apiName) {
+		if (CApi.API_GET_SID.equals(apiName)) {
+			return "sid=545245465465464";
+		}
+		return null;
+	}
+
+	@Override
+	public Object loadMethodFromClass(String apiName, Object... params) {
+
+		return null;
+	}
+
+	@Override
+	public Object loadMethodFromClass(String apiName,
+			UCCallbackListener<String> listener) {
+
+		return null;
+	}
+}

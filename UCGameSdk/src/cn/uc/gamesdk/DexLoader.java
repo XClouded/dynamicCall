@@ -4,9 +4,10 @@ import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
-import android.annotation.SuppressLint;
 import cn.uc.gamesdk.entity.DexClassPath;
 import cn.uc.gamesdk.iconst.CApi;
 import cn.uc.gamesdk.iface.IDexClassLoader;
@@ -17,31 +18,58 @@ import dalvik.system.DexClassLoader;
 
 public class DexLoader implements IDexClassLoader {
 
-	private static Map<String, DexClassPath> dexPathMap = null;
-	
+	private static final String CLASS_NAME = "DexLoader";
+
 	private static DexLoader dexLoader = null;// 保存加载dex的对象
+
+	// private Map<String, DexClassPath> dexPathMap = null;// 接口对应的dex表
+	// private Set<DexClassPath> dexSet = null;// 保存无重复而会用到的dex名称及其对应的入口
+
+	private Map<String, IDispatcher> dispatcherMap = null;// APINAME->DISPATCHER
+	private Map<String, IDispatcher> dexClassMap = null;// dexName->已加载dispatcher
 
 	public static DexLoader getInstance() {
 		if (null == dexLoader)
 			dexLoader = new DexLoader();
- 
+
 		return dexLoader;
 
 	}
 
-	@SuppressLint("NewApi")
-	public IDispatcher Creator(String apiName) {
-		if (null == dexPathMap)
-			init();
+	public Map<String, IDispatcher> Creator() {
+		initConfig();
+		return dispatcherMap;
+	}
+
+	/*
+	 * 主要是从配置文件中获取接口对应的入口类与所在DEX文件名（目前硬编码)
+	 */
+	private void initConfig() {
+		// dexPathMap = new HashMap<String, DexClassPath>();
+		// dexSet = new LinkedHashSet<DexClassPath>();
+
+		dispatcherMap = new HashMap<String, IDispatcher>();
+		dexClassMap = new HashMap<String, IDispatcher>();
+
+		String[] apiNames = { CApi.API_LOGIN, CApi.API_GET_SID,
+				CApi.API_WEBVIEW, CApi.API_UPDATE };
+		String[] classPaths = { "cn.uc.gamesdk.core.Dispatcher",
+				"cn.uc.gamesdk.core.Dispatcher",
+				"cn.uc.gamesdk.core.Dispatcher",
+				"cn.uc.gamesdk.update.Dispatcher" };
+		String[] dexPaths = { "jars/core.jar", "jars/core.jar",
+				"jars/core.jar", "jars/update.jar" };
+
 		IDispatcher classDispatcher = null;
 
-		if (dexPathMap.containsKey(apiName)) {
-			DexClassPath dexClass = dexPathMap.get(apiName);
-			String className = dexClass.classPath;
-			String dexName = dexClass.dexPath;
+		for (int i = 0; i < apiNames.length; i++) {
+			String apiName = apiNames[i];
+			String className = classPaths[i];
+			String dexName = dexPaths[i];
 
-			if (dexLoaderMap.containsKey(dexName)) {
-				classDispatcher = dexLoaderMap.get(dexName);
+			if (dexClassMap.containsKey(dexName)) {
+				// 如果已经加载过此dex，则直接返回
+				dispatcherMap.put(apiName, dexClassMap.get(dexName));
 			} else {
 				DexClassLoader classLoader = new DexClassLoader(
 						FileUtil.getFilePath() + File.separator + dexName,
@@ -56,48 +84,39 @@ public class DexLoader implements IDexClassLoader {
 					classDispatcher = (IDispatcher) getInstanceMethod.invoke(
 							null, null);
 
-					classDispatcher.setClassLoader(this);// !必须设置,DEX间通信用
+					classDispatcher.registerCallback(SdkListener.getInstance());// 注册统一回调侦听器
+					dexClassMap.put(dexName, classDispatcher);
+					dispatcherMap.put(apiName, classDispatcher);
 
-					dexLoaderMap.put(dexName, classDispatcher);
 				} catch (ClassNotFoundException e) {
-					e.printStackTrace();
-				} catch (IllegalAccessException e) {
 					e.printStackTrace();
 				} catch (NoSuchMethodException e) {
 					e.printStackTrace();
 				} catch (IllegalArgumentException e) {
 					e.printStackTrace();
+				} catch (IllegalAccessException e) {
+					e.printStackTrace();
 				} catch (InvocationTargetException e) {
 					e.printStackTrace();
 				}
 			}
+
 		}
-		return classDispatcher;
-	}
 
-	/*
-	 * 主要是从配置文件中获取接口对应的入口类与DEX文件名（目前硬编码)
-	 */
-	private void init() {
-		dexPathMap = new HashMap<String, DexClassPath>();
-		//dexLoaderMap = new HashMap<String, IDispatcher>();
-
-		DexClassPath core = new DexClassPath();
-		core.classPath = "cn.uc.gamesdk.core.Dispatcher";
-		core.dexPath = "jars/core.jar";
-
-		DexClassPath update = new DexClassPath();
-		update.classPath = "cn.uc.gamesdk.update.Dispatcher";
-		update.dexPath = "jars/update.jar";
-
-		dexPathMap.put(CApi.API_LOGIN, core);
-		dexPathMap.put(CApi.API_INIT, core);
-		dexPathMap.put(CApi.API_WEBVIEW, core);
-		dexPathMap.put(CApi.API_UPDATE, update);
-	}
-
-	public void releaseControl() {
-		dexPathMap = null;
-		System.gc();
+		// DexClassPath core = new DexClassPath();
+		// core.classPath = "cn.uc.gamesdk.core.Dispatcher";
+		// core.dexPath = "jars/core.jar";
+		// dexSet.add(core);
+		//
+		// DexClassPath update = new DexClassPath();
+		// update.classPath = "cn.uc.gamesdk.update.Dispatcher";
+		// update.dexPath = "jars/update.jar";
+		// if (dexSet.contains(update))
+		// dexSet.add(update);
+		//
+		// dexPathMap.put(CApi.API_LOGIN, core);
+		// dexPathMap.put(CApi.API_INIT, core);
+		// dexPathMap.put(CApi.API_WEBVIEW, core);
+		// dexPathMap.put(CApi.API_UPDATE, update);
 	}
 }

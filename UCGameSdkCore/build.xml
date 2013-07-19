@@ -33,7 +33,7 @@
 		<javac debug="false" destdir="${buildPath}" encoding="UTF-8" includeantruntime="on" source="1.6" srcdir="${classPath}" target="1.6">
 				<classpath refid="android" />
 				<classpath refid="iface" />
-				<classpath refid="cordova" />
+
 			</javac>
 			
 			<jar basedir="${buildPath}" includes="**/*.class" jarfile="${destPath}/${destName}.jar"/>

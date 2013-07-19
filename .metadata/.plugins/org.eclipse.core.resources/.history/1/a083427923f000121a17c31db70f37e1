@@ -1,0 +1,19 @@
+package cn.uc.gamesdk;
+
+import java.util.Map;
+
+import cn.uc.gamesdk.iface.IDispatcher;
+
+public class UCGameSdk {
+
+	private static Map<String, IDispatcher> dexLoaderMap = null;
+
+	/*
+	 * 获取配置列表并将其中各DEX的实例化接口类
+	 */
+	public static boolean init() {
+		dexLoaderMap = DexLoader.getInstance().Creator();
+		return false;
+	}
+
+}

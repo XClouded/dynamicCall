@@ -30,6 +30,13 @@
             android:layout_height="wrap_content"
             android:text="Clear" />
 
+        <Button
+            android:id="@+id/btn_update"
+            style="?android:attr/buttonStyleSmall"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="update" />
+
     </LinearLayout>
 
     <LinearLayout
@@ -56,6 +63,13 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="login" />
+
+        <Button
+            android:id="@+id/btn_getsid"
+            style="?android:attr/buttonStyleSmall"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="getsid" />
 
         <Button
             android:id="@+id/btn_float"

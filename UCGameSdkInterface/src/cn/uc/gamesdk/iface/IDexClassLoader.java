@@ -1,5 +1,7 @@
 package cn.uc.gamesdk.iface;
 
+import java.util.Map;
+
 public interface IDexClassLoader {
-	public IDispatcher Creator(String apiName);
+	public Map<String, IDispatcher> Creator();
 }
